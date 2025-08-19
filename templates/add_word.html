@@ -3,56 +3,391 @@
 {% block title %}新增單字 - 英文單字筆記本{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-8">
-        <div class="card">
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>
+                <i class="bi bi-plus-circle"></i> 新增單字
+            </h1>
+            <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> 返回首頁
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <form method="POST" id="addWordForm">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-pencil"></i> 單字資訊
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- 英文單字 -->
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <div class="form-floating">
+                                <input type="text" class="form-control" id="word" name="word" placeholder="請輸入英文單字" required>
+                                <label for="word">
+                                    <i class="bi bi-type"></i> 英文單字 *
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <button type="button" class="btn btn-primary w-100 h-100" id="aiGenerateBtn" disabled>
+                                <i class="bi bi-magic"></i> AI 自動補齊
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 中文翻譯 -->
+                    <div class="form-floating mb-3">
+                        <input type="text" class="form-control" id="chinese_meaning" name="chinese_meaning" placeholder="請輸入中文翻譯" required>
+                        <label for="chinese_meaning">
+                            <i class="bi bi-translate"></i> 中文翻譯 *
+                        </label>
+                    </div>
+
+                    <!-- 英文定義 -->
+                    <div class="form-floating mb-3">
+                        <textarea class="form-control" id="english_meaning" name="english_meaning" placeholder="請輸入英文定義" style="height: 80px"></textarea>
+                        <label for="english_meaning">
+                            <i class="bi bi-book"></i> 英文定義
+                        </label>
+                    </div>
+
+                    <!-- 音標 -->
+                    <div class="form-floating mb-3">
+                        <input type="text" class="form-control" id="phonetic" name="phonetic" placeholder="請輸入音標">
+                        <label for="phonetic">
+                            <i class="bi bi-volume-up"></i> 音標
+                        </label>
+                    </div>
+
+                    <!-- 例句 -->
+                    <div class="form-floating mb-3">
+                        <textarea class="form-control" id="example_sentence" name="example_sentence" placeholder="請輸入例句" style="height: 80px"></textarea>
+                        <label for="example_sentence">
+                            <i class="bi bi-chat-quote"></i> 例句
+                        </label>
+                    </div>
+
+                    <!-- 同義詞 -->
+                    <div class="form-floating mb-3">
+                        <input type="text" class="form-control" id="synonyms" name="synonyms" placeholder="請輸入同義詞，用逗號分隔">
+                        <label for="synonyms">
+                            <i class="bi bi-arrow-right-circle"></i> 同義詞
+                        </label>
+                        <div class="form-text">多個同義詞請用逗號分隔，例如：big, large, huge</div>
+                    </div>
+
+                    <!-- 反義詞 -->
+                    <div class="form-floating mb-3">
+                        <input type="text" class="form-control" id="antonyms" name="antonyms" placeholder="請輸入反義詞，用逗號分隔">
+                        <label for="antonyms">
+                            <i class="bi bi-arrow-left-circle"></i> 反義詞
+                        </label>
+                        <div class="form-text">多個反義詞請用逗號分隔，例如：small, tiny, little</div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-circle"></i> 儲存單字
+                        </button>
+                        <button type="reset" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-clockwise"></i> 重設
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card sticky-top" style="top: 2rem;">
             <div class="card-header">
-                <h3 class="mb-0">新增單字</h3>
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-lightbulb"></i> 使用提示
+                </h6>
             </div>
             <div class="card-body">
-                <form method="POST">
-                    <div class="mb-3">
-                        <label for="word" class="form-label">英文單字 *</label>
-                        <input type="text" class="form-control" id="word" name="word" required>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="chinese_meaning" class="form-label">中文解釋 *</label>
-                        <input type="text" class="form-control" id="chinese_meaning" name="chinese_meaning" required>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="english_meaning" class="form-label">英文解釋</label>
-                        <textarea class="form-control" id="english_meaning" name="english_meaning" rows="2"></textarea>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="phonetic" class="form-label">音標</label>
-                        <input type="text" class="form-control" id="phonetic" name="phonetic" placeholder="例如: /ɪɡˈzæmpəl/">
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="example_sentence" class="form-label">例句</label>
-                        <textarea class="form-control" id="example_sentence" name="example_sentence" rows="2"></textarea>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="synonyms" class="form-label">同義詞</label>
-                        <input type="text" class="form-control" id="synonyms" name="synonyms" placeholder="用逗號分隔，例如: big, large, huge">
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="antonyms" class="form-label">反義詞</label>
-                        <input type="text" class="form-control" id="antonyms" name="antonyms" placeholder="用逗號分隔，例如: small, tiny, little">
-                    </div>
-                    
-                    <div class="d-flex justify-content-between">
-                        <a href="{{ url_for('index') }}" class="btn btn-secondary">取消</a>
-                        <button type="submit" class="btn btn-primary">新增單字</button>
-                    </div>
-                </form>
+                <h6>AI 自動補齊</h6>
+                <p class="small text-muted mb-3">
+                    輸入英文單字後，點擊「AI 自動補齊」按鈕，系統會自動填入：
+                </p>
+                <ul class="small text-muted">
+                    <li>中文翻譯</li>
+                    <li>英文定義</li>
+                    <li>音標</li>
+                    <li>例句</li>
+                    <li>同義詞和反義詞</li>
+                </ul>
+
+                <div id="aiNotice" class="alert alert-info mt-3" style="display: none;">
+                    <i class="bi bi-info-circle"></i>
+                    <strong>注意:</strong> 使用 AI 功能需要先在設定中配置 API Key。
+                </div>
+
+                <div id="aiStatus" class="mt-3">
+                    <!-- AI 狀態會在這裡顯示 -->
+                </div>
+            </div>
+            <div class="card-footer">
+                <a href="{{ url_for('api_settings') }}" class="btn btn-outline-primary btn-sm w-100">
+                    <i class="bi bi-gear"></i> 設定 AI API
+                </a>
             </div>
         </div>
     </div>
 </div>
+
+<!-- AI 生成結果 Modal -->
+<div class="modal fade" id="aiResultModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-magic"></i> AI 生成結果
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="aiResultContent">
+                    <!-- AI 生成的內容會在這裡顯示 -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="acceptAiResult">
+                    <i class="bi bi-check-circle"></i> 接受並填入
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 檢查 AI 狀態
+function checkAiStatus() {
+    const aiBtn = document.getElementById('aiGenerateBtn');
+    const wordInput = document.getElementById('word');
+    const statusDiv = document.getElementById('aiStatus');
+    const noticeDiv = document.getElementById('aiNotice');
+
+    // 檢查 AI API 狀態
+    fetch('/api/ai-status')
+        .then(response => response.json())
+        .then(data => {
+            if (data.available_providers && data.available_providers.length > 0) {
+                // 有可用的 AI 提供商
+                statusDiv.innerHTML = `
+                    <div class="alert alert-success">
+                        <i class="bi bi-check-circle"></i>
+                        AI 功能已就緒 (${data.available_providers.join(', ').toUpperCase()})
+                    </div>
+                `;
+                noticeDiv.style.display = 'none';
+            } else {
+                // 沒有可用的 AI 提供商
+                statusDiv.innerHTML = `
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        需要設定 AI API Key 才能使用自動補齊功能。
+                    </div>
+                `;
+                noticeDiv.style.display = 'block';
+            }
+        })
+        .catch(() => {
+            // 無法取得狀態，顯示預設訊息
+            statusDiv.innerHTML = `
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    AI 功能可用，輸入單字後點擊「AI 自動補齊」試試看。
+                </div>
+            `;
+            noticeDiv.style.display = 'none';
+        });
+
+    // 監聽單字輸入
+    wordInput.addEventListener('input', function() {
+        if (this.value.trim()) {
+            aiBtn.disabled = false;
+            aiBtn.innerHTML = '<i class="bi bi-magic"></i> AI 自動補齊';
+        } else {
+            aiBtn.disabled = true;
+            aiBtn.innerHTML = '<i class="bi bi-magic"></i> AI 自動補齊';
+        }
+    });
+}
+
+// AI 自動補齊功能
+document.getElementById('aiGenerateBtn').addEventListener('click', function() {
+    const word = document.getElementById('word').value.trim();
+
+    if (!word) {
+        alert('請先輸入英文單字');
+        return;
+    }
+
+    // 顯示載入狀態
+    const originalText = this.innerHTML;
+    this.innerHTML = '<i class="bi bi-hourglass-split"></i> AI 生成中...';
+    this.disabled = true;
+
+    // 呼叫 AI API
+    fetch('/api/generate-word-info', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            word: word,
+            provider: null  // 使用預設提供商
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // 顯示 AI 生成結果
+            showAiResult(data.data);
+        } else {
+            // 顯示錯誤訊息
+            showErrorMessage(data.message);
+        }
+    })
+    .catch(error => {
+        console.error('AI 生成錯誤:', error);
+        showErrorMessage('網路連線錯誤，請檢查網路連線後重試');
+    })
+    .finally(() => {
+        // 恢復按鈕
+        this.innerHTML = originalText;
+        this.disabled = false;
+    });
+});
+
+// 顯示 AI 生成結果
+function showAiResult(result) {
+    const content = document.getElementById('aiResultContent');
+
+    content.innerHTML = `
+        <div class="alert alert-info mb-3">
+            <i class="bi bi-info-circle"></i>
+            <strong>AI 提供商:</strong> ${result.provider.toUpperCase()}
+            <span class="badge bg-primary ms-2">信心度: ${Math.round(result.confidence_score * 100)}%</span>
+        </div>
+        <div class="row">
+            <div class="col-12 mb-3">
+                <label class="form-label"><strong>中文翻譯:</strong></label>
+                <div class="form-control-plaintext border rounded p-2 bg-light">${result.chinese_meaning || '未提供'}</div>
+            </div>
+            <div class="col-12 mb-3">
+                <label class="form-label"><strong>英文定義:</strong></label>
+                <div class="form-control-plaintext border rounded p-2 bg-light">${result.english_meaning || '未提供'}</div>
+            </div>
+            <div class="col-6 mb-3">
+                <label class="form-label"><strong>音標:</strong></label>
+                <div class="form-control-plaintext border rounded p-2 bg-light">${result.phonetic || '未提供'}</div>
+            </div>
+            <div class="col-6 mb-3">
+                <label class="form-label"><strong>例句:</strong></label>
+                <div class="form-control-plaintext border rounded p-2 bg-light">${result.example_sentence || '未提供'}</div>
+            </div>
+            <div class="col-6 mb-3">
+                <label class="form-label"><strong>同義詞:</strong></label>
+                <div class="form-control-plaintext border rounded p-2 bg-light">${result.synonyms || '未提供'}</div>
+            </div>
+            <div class="col-6 mb-3">
+                <label class="form-label"><strong>反義詞:</strong></label>
+                <div class="form-control-plaintext border rounded p-2 bg-light">${result.antonyms || '未提供'}</div>
+            </div>
+        </div>
+    `;
+
+    // 儲存結果供後續使用
+    window.currentAiResult = result;
+
+    // 顯示 Modal
+    const modal = new bootstrap.Modal(document.getElementById('aiResultModal'));
+    modal.show();
+}
+
+// 顯示錯誤訊息
+function showErrorMessage(message) {
+    // 移除之前的錯誤訊息
+    const existingAlert = document.querySelector('.ai-error-alert');
+    if (existingAlert) {
+        existingAlert.remove();
+    }
+
+    // 建立錯誤訊息
+    const alert = document.createElement('div');
+    alert.className = 'alert alert-danger alert-dismissible fade show ai-error-alert';
+    alert.innerHTML = `
+        <i class="bi bi-exclamation-triangle"></i>
+        <strong>AI 生成失敗:</strong> ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+
+    // 插入到表單上方
+    const form = document.getElementById('addWordForm');
+    form.parentNode.insertBefore(alert, form);
+
+    // 自動滾動到錯誤訊息
+    alert.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    // 5秒後自動隱藏
+    setTimeout(() => {
+        if (alert && alert.parentNode) {
+            alert.remove();
+        }
+    }, 5000);
+}
+
+// 接受 AI 結果
+document.getElementById('acceptAiResult').addEventListener('click', function() {
+    if (window.currentAiResult) {
+        const result = window.currentAiResult;
+
+        // 填入表單
+        document.getElementById('chinese_meaning').value = result.chinese_meaning;
+        document.getElementById('english_meaning').value = result.english_meaning;
+        document.getElementById('phonetic').value = result.phonetic;
+        document.getElementById('example_sentence').value = result.example_sentence;
+        document.getElementById('synonyms').value = result.synonyms;
+        document.getElementById('antonyms').value = result.antonyms;
+
+        // 關閉 Modal
+        bootstrap.Modal.getInstance(document.getElementById('aiResultModal')).hide();
+
+        // 顯示成功訊息
+        const alert = document.createElement('div');
+        alert.className = 'alert alert-success alert-dismissible fade show';
+        alert.innerHTML = `
+            <i class="bi bi-check-circle"></i>
+            AI 生成的內容已填入表單，你可以進一步編輯後儲存。
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+
+        document.querySelector('.container.mt-4').insertBefore(alert, document.querySelector('.row'));
+    }
+});
+
+// 表單提交處理
+document.getElementById('addWordForm').addEventListener('submit', function(e) {
+    const submitBtn = this.querySelector('button[type="submit"]');
+    submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> 儲存中...';
+    submitBtn.disabled = true;
+});
+
+// 頁面載入時檢查 AI 狀態
+document.addEventListener('DOMContentLoaded', checkAiStatus);
+</script>
 {% endblock %}

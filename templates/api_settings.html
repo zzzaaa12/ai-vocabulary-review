@@ -1,0 +1,402 @@
+{% extends "base.html" %}
+
+{% block title %}AI API 設定 - 英文單字筆記本{% endblock %}
+
+{% block extra_css %}
+<style>
+    .api-key-display {
+        font-family: monospace;
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        padding: 0.5rem;
+        font-size: 0.9em;
+    }
+    .provider-section {
+        border: 1px solid #dee2e6;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        background-color: #fff;
+    }
+    .provider-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    .provider-logo {
+        width: 32px;
+        height: 32px;
+        margin-right: 12px;
+    }
+    .test-result {
+        margin-top: 1rem;
+        padding: 0.75rem;
+        border-radius: 0.375rem;
+        display: none;
+    }
+    .test-success {
+        background-color: #d1edff;
+        border: 1px solid #0ea5e9;
+        color: #0369a1;
+    }
+    .test-error {
+        background-color: #fee2e2;
+        border: 1px solid #ef4444;
+        color: #dc2626;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>
+                <i class="bi bi-robot"></i> AI API 設定
+            </h1>
+            <a href="{{ url_for('settings') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> 返回設定
+            </a>
+        </div>
+    </div>
+</div>
+
+<form method="POST" id="apiSettingsForm">
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- OpenAI 設定 -->
+            <div class="provider-section">
+                <div class="provider-header">
+                    <div class="provider-logo bg-success rounded d-flex align-items-center justify-content-center">
+                        <i class="bi bi-chat-dots text-white"></i>
+                    </div>
+                    <div>
+                        <h4 class="mb-1">OpenAI</h4>
+                        <small class="text-muted">GPT-3.5, GPT-4 等模型</small>
+                    </div>
+                    <div class="ms-auto">
+                        {% if status.openai.enabled %}
+                            <span class="badge bg-success">已啟用</span>
+                        {% else %}
+                            <span class="badge bg-secondary">未設定</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="form-floating mb-3">
+                            <input type="password" class="form-control api-key-input" id="openai_key" name="openai_key"
+                                   placeholder="sk-..." {% if status.openai.configured %}value="••••••••••••••••"{% endif %}>
+                            <label for="openai_key">
+                                <i class="bi bi-key"></i> API Key
+                            </label>
+                            <div class="form-text">
+                                格式: sk-...
+                                <a href="https://platform.openai.com/api-keys" target="_blank" class="text-decoration-none">
+                                    <i class="bi bi-box-arrow-up-right"></i> 取得 API Key
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-floating mb-3">
+                            <select class="form-select" id="openai_model" name="openai_model">
+                                <option value="gpt-5-mini" {% if status.openai.model == 'gpt-5-mini' %}selected{% endif %}>GPT-5 Mini</option>
+                                <option value="gpt-5-nano" {% if status.openai.model == 'gpt-5-nano' %}selected{% endif %}>GPT-5 Nano (預設)</option>
+                                <option value="gpt-4.1-mini" {% if status.openai.model == 'gpt-4.1-mini' %}selected{% endif %}>GPT-4.1 Mini</option>
+                                <option value="gpt-4.1-nano" {% if status.openai.model == 'gpt-4.1-nano' %}selected{% endif %}>GPT-4.1 Nano</option>
+                            </select>
+                            <label for="openai_model">
+                                <i class="bi bi-cpu"></i> 模型
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="testConnection('openai')">
+                        <i class="bi bi-wifi"></i> 測試連線
+                    </button>
+                    {% if status.openai.configured %}
+                        <button type="button" class="btn btn-outline-danger btn-sm" onclick="clearApiKey('openai')">
+                            <i class="bi bi-trash"></i> 清除
+                        </button>
+                    {% endif %}
+                </div>
+
+                <div id="openai-test-result" class="test-result"></div>
+            </div>
+
+            <!-- Gemini 設定 -->
+            <div class="provider-section">
+                <div class="provider-header">
+                    <div class="provider-logo bg-primary rounded d-flex align-items-center justify-content-center">
+                        <i class="bi bi-stars text-white"></i>
+                    </div>
+                    <div>
+                        <h4 class="mb-1">Google Gemini</h4>
+                        <small class="text-muted">Gemini Pro, Gemini Pro Vision</small>
+                    </div>
+                    <div class="ms-auto">
+                        {% if status.gemini.enabled %}
+                            <span class="badge bg-success">已啟用</span>
+                        {% else %}
+                            <span class="badge bg-secondary">未設定</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="form-floating mb-3">
+                            <input type="password" class="form-control api-key-input" id="gemini_key" name="gemini_key"
+                                   placeholder="AIzaSy..." {% if status.gemini.configured %}value="••••••••••••••••"{% endif %}>
+                            <label for="gemini_key">
+                                <i class="bi bi-key"></i> API Key
+                            </label>
+                            <div class="form-text">
+                                格式: AIzaSy...
+                                <a href="https://makersuite.google.com/app/apikey" target="_blank" class="text-decoration-none">
+                                    <i class="bi bi-box-arrow-up-right"></i> 取得 API Key
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-floating mb-3">
+                            <select class="form-select" id="gemini_model" name="gemini_model">
+                                <option value="gemini-2.5-flash" {% if status.gemini.model == 'gemini-2.5-flash' %}selected{% endif %}>Gemini 2.5 Flash</option>
+                                <option value="gemini-2.5-flash-pro" {% if status.gemini.model == 'gemini-2.5-flash-pro' %}selected{% endif %}>Gemini 2.5 Flash Pro (預設)</option>
+                                <option value="gemini-2.5-flash-lite" {% if status.gemini.model == 'gemini-2.5-flash-lite' %}selected{% endif %}>Gemini 2.5 Flash Lite</option>
+                            </select>
+                            <label for="gemini_model">
+                                <i class="bi bi-cpu"></i> 模型
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="testConnection('gemini')">
+                        <i class="bi bi-wifi"></i> 測試連線
+                    </button>
+                    {% if status.gemini.configured %}
+                        <button type="button" class="btn btn-outline-danger btn-sm" onclick="clearApiKey('gemini')">
+                            <i class="bi bi-trash"></i> 清除
+                        </button>
+                    {% endif %}
+                </div>
+
+                <div id="gemini-test-result" class="test-result"></div>
+            </div>
+
+            <!-- 一般設定 -->
+            <div class="provider-section">
+                <div class="provider-header">
+                    <div class="provider-logo bg-info rounded d-flex align-items-center justify-content-center">
+                        <i class="bi bi-sliders text-white"></i>
+                    </div>
+                    <div>
+                        <h4 class="mb-1">一般設定</h4>
+                        <small class="text-muted">預設提供商、超時時間等</small>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="form-floating mb-3">
+                            <select class="form-select" id="default_provider" name="default_provider">
+                                <option value="openai" {% if status.settings.default_provider == 'openai' %}selected{% endif %}>OpenAI</option>
+                                <option value="gemini" {% if status.settings.default_provider == 'gemini' %}selected{% endif %}>Gemini</option>
+                            </select>
+                            <label for="default_provider">
+                                <i class="bi bi-star"></i> 預設提供商
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-floating mb-3">
+                            <input type="number" class="form-control" id="timeout" name="timeout"
+                                   min="5" max="120" value="{{ status.settings.timeout }}">
+                            <label for="timeout">
+                                <i class="bi bi-clock"></i> 超時時間 (秒)
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-floating mb-3">
+                            <input type="number" class="form-control" id="max_retries" name="max_retries"
+                                   min="0" max="10" value="{{ status.settings.max_retries }}">
+                            <label for="max_retries">
+                                <i class="bi bi-arrow-repeat"></i> 最大重試次數
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 側邊欄 -->
+        <div class="col-lg-4">
+            <div class="card sticky-top" style="top: 2rem;">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-info-circle"></i> 設定說明
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <h6>OpenAI API Key</h6>
+                    <p class="small text-muted mb-3">
+                        用於 GPT 模型的智慧單字補齊功能。API Key 以 "sk-" 開頭，
+                        可在 OpenAI Platform 取得。
+                    </p>
+
+                    <h6>Gemini API Key</h6>
+                    <p class="small text-muted mb-3">
+                        Google 的 AI 模型，提供多樣化的語言理解能力。
+                        API Key 通常以 "AIzaSy" 開頭。
+                    </p>
+
+                    <h6>安全性</h6>
+                    <p class="small text-muted mb-3">
+                        所有 API Keys 都會加密儲存在本地，不會傳送到其他伺服器。
+                    </p>
+
+                    <div class="alert alert-info">
+                        <i class="bi bi-lightbulb"></i>
+                        <strong>提示:</strong> 建議先設定一個提供商進行測試，
+                        確認功能正常後再設定其他提供商。
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-check-circle"></i> 儲存設定
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<!-- 清除確認 Modal -->
+<div class="modal fade" id="clearConfirmModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">確認清除</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>確定要清除 <span id="clearProviderName"></span> 的 API Key 嗎？</p>
+                <p class="text-muted small">此操作無法復原。</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <form method="POST" action="{{ url_for('clear_api_key') }}" style="display: inline;">
+                    <input type="hidden" name="provider" id="clearProviderInput">
+                    <button type="submit" class="btn btn-danger">確認清除</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function testConnection(provider) {
+    const button = document.querySelector(`button[onclick="testConnection('${provider}')"]`);
+    const resultDiv = document.getElementById(`${provider}-test-result`);
+
+    // 顯示載入狀態
+    button.innerHTML = '<i class="bi bi-hourglass-split"></i> 測試中...';
+    button.disabled = true;
+
+    // 發送測試請求
+    fetch('{{ url_for("test_api_connection") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `provider=${provider}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        // 顯示結果
+        resultDiv.className = `test-result ${data.success ? 'test-success' : 'test-error'}`;
+        resultDiv.innerHTML = `
+            <i class="bi bi-${data.success ? 'check-circle' : 'exclamation-triangle'}"></i>
+            ${data.message}
+        `;
+        resultDiv.style.display = 'block';
+
+        // 恢復按鈕
+        button.innerHTML = '<i class="bi bi-wifi"></i> 測試連線';
+        button.disabled = false;
+
+        // 3秒後隱藏結果
+        setTimeout(() => {
+            resultDiv.style.display = 'none';
+        }, 3000);
+    })
+    .catch(error => {
+        // 錯誤處理
+        resultDiv.className = 'test-result test-error';
+        resultDiv.innerHTML = `
+            <i class="bi bi-exclamation-triangle"></i>
+            測試失敗: ${error.message}
+        `;
+        resultDiv.style.display = 'block';
+
+        // 恢復按鈕
+        button.innerHTML = '<i class="bi bi-wifi"></i> 測試連線';
+        button.disabled = false;
+    });
+}
+
+function clearApiKey(provider) {
+    const providerNames = {
+        'openai': 'OpenAI',
+        'gemini': 'Google Gemini'
+    };
+
+    document.getElementById('clearProviderName').textContent = providerNames[provider];
+    document.getElementById('clearProviderInput').value = provider;
+
+    const modal = new bootstrap.Modal(document.getElementById('clearConfirmModal'));
+    modal.show();
+}
+
+// 表單提交時的載入狀態
+document.getElementById('apiSettingsForm').addEventListener('submit', function() {
+    const submitButton = this.querySelector('button[type="submit"]');
+    submitButton.innerHTML = '<i class="bi bi-hourglass-split"></i> 儲存中...';
+    submitButton.disabled = true;
+});
+
+// 密碼欄位的顯示/隱藏功能
+document.querySelectorAll('input[type="password"]').forEach(input => {
+    const container = input.parentElement;
+    const toggleButton = document.createElement('button');
+    toggleButton.type = 'button';
+    toggleButton.className = 'btn btn-outline-secondary position-absolute top-50 end-0 translate-middle-y me-2';
+    toggleButton.style.zIndex = '10';
+    toggleButton.innerHTML = '<i class="bi bi-eye"></i>';
+
+    toggleButton.addEventListener('click', function() {
+        if (input.type === 'password') {
+            input.type = 'text';
+            this.innerHTML = '<i class="bi bi-eye-slash"></i>';
+        } else {
+            input.type = 'password';
+            this.innerHTML = '<i class="bi bi-eye"></i>';
+        }
+    });
+
+    container.style.position = 'relative';
+    container.appendChild(toggleButton);
+});
+</script>
+{% endblock %}

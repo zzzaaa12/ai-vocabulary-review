@@ -1,97 +1,102 @@
 {% extends "base.html" %}
 
-{% block title %}首頁 - 英文單字筆記本{% endblock %}
-
 {% block content %}
 <div class="row">
-    <div class="col-md-12">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h1>我的單字本</h1>
-            <a href="{{ url_for('add_word') }}" class="btn btn-primary">新增單字</a>
-        </div>
-
-        <!-- 時間篩選 -->
-        <div class="mb-3">
-            <div class="btn-group" role="group">
-                <a href="{{ url_for('index', time_filter='all') }}" 
-                   class="btn {{ 'btn-primary' if time_filter == 'all' else 'btn-outline-primary' }}">
-                    全部
-                </a>
-                <a href="{{ url_for('index', time_filter='recent_2_days') }}" 
-                   class="btn {{ 'btn-primary' if time_filter == 'recent_2_days' else 'btn-outline-primary' }}">
-                    最近2天
-                </a>
-                <a href="{{ url_for('index', time_filter='recent_week') }}" 
-                   class="btn {{ 'btn-primary' if time_filter == 'recent_week' else 'btn-outline-primary' }}">
-                    最近一週
-                </a>
-                <a href="{{ url_for('index', time_filter='recent_2_weeks') }}" 
-                   class="btn {{ 'btn-primary' if time_filter == 'recent_2_weeks' else 'btn-outline-primary' }}">
-                    最近兩週
-                </a>
-                <a href="{{ url_for('index', time_filter='recent_month') }}" 
-                   class="btn {{ 'btn-primary' if time_filter == 'recent_month' else 'btn-outline-primary' }}">
-                    最近一個月
-                </a>
-            </div>
-        </div>
-
-        <!-- 搜尋框 -->
-        <div class="mb-4">
-            <div class="input-group">
-                <input type="text" class="form-control" placeholder="搜尋單字..." id="searchInput">
-                <button class="btn btn-outline-secondary" type="button" id="searchBtn">搜尋</button>
-            </div>
-        </div>
-
-        <!-- 單字列表 -->
-        {% if words %}
-            <div class="row">
-                {% for word in words %}
-                    <div class="col-md-6 col-lg-4 mb-3">
-                        <div class="card">
-                            <div class="card-body">
-                                <h5 class="card-title">{{ word.word }}</h5>
-                                <p class="card-text">{{ word.chinese_meaning }}</p>
-                                {% if word.phonetic %}
-                                    <small class="text-muted">{{ word.phonetic }}</small>
-                                {% endif %}
-                                <div class="mt-2">
-                                    <a href="{{ url_for('word_detail', word_id=word.id) }}" class="btn btn-sm btn-outline-primary">查看</a>
-                                    <a href="{{ url_for('edit_word', word_id=word.id) }}" class="btn btn-sm btn-outline-secondary">編輯</a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                {% endfor %}
-            </div>
-        {% else %}
-            <div class="text-center py-5">
-                <h3 class="text-muted">還沒有單字</h3>
-                <p class="text-muted">開始新增你的第一個單字吧！</p>
-                <a href="{{ url_for('add_word') }}" class="btn btn-primary">新增單字</a>
-            </div>
-        {% endif %}
-
-        <!-- 統計資訊 -->
-        <div class="mt-4">
-            <small class="text-muted">總共 {{ total_words }} 個單字</small>
+    <div class="col-12">
+        <div class="jumbotron bg-light p-5 rounded-3 mb-4">
+            <h1 class="display-4">
+                <i class="bi bi-book"></i> 英文單字筆記本
+            </h1>
+            <p class="lead">使用 AI 技術智慧管理你的英文單字學習</p>
+            <hr class="my-4">
+            <p>輸入單字，讓 AI 自動補齊中文翻譯、音標、例句、同義詞和反義詞。</p>
+            <a class="btn btn-primary btn-lg" href="{{ url_for('add_word') }}" role="button">
+                <i class="bi bi-plus-circle"></i> 開始新增單字
+            </a>
         </div>
     </div>
 </div>
 
-<script>
-document.getElementById('searchBtn').addEventListener('click', function() {
-    const query = document.getElementById('searchInput').value;
-    if (query.trim()) {
-        window.location.href = `{{ url_for('search') }}?q=${encodeURIComponent(query)}`;
-    }
-});
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-list"></i> 我的單字本
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if words %}
+                    <!-- 單字列表 -->
+                    <div class="list-group">
+                        {% for word in words %}
+                            <a href="{{ url_for('word_detail', word_id=word.id) }}" class="list-group-item list-group-item-action">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">{{ word.word }}</h6>
+                                    <small>{{ word.created_date.strftime('%Y-%m-%d') }}</small>
+                                </div>
+                                <p class="mb-1">{{ word.chinese_meaning }}</p>
+                                {% if word.phonetic %}
+                                    <small class="text-muted">{{ word.phonetic }}</small>
+                                {% endif %}
+                            </a>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-book display-1 text-muted"></i>
+                        <h4 class="mt-3 text-muted">還沒有任何單字</h4>
+                        <p class="text-muted">開始新增你的第一個單字吧！</p>
+                        <a href="{{ url_for('add_word') }}" class="btn btn-primary">
+                            <i class="bi bi-plus-circle"></i> 新增單字
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
 
-document.getElementById('searchInput').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-        document.getElementById('searchBtn').click();
-    }
-});
-</script>
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-bar-chart"></i> 學習統計
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <h4 class="text-primary">{{ total_words }}</h4>
+                        <small class="text-muted">總單字數</small>
+                    </div>
+                    <div class="col-6">
+                        <h4 class="text-success">0</h4>
+                        <small class="text-muted">本週新增</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-lightning"></i> 快速操作
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('add_word') }}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle"></i> 新增單字
+                    </a>
+                    <a href="{{ url_for('api_settings') }}" class="btn btn-outline-primary">
+                        <i class="bi bi-robot"></i> 設定 AI
+                    </a>
+                    <button class="btn btn-outline-secondary" disabled>
+                        <i class="bi bi-shuffle"></i> 隨機複習
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

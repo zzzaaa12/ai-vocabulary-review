@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block title %}設定 - 英文單字筆記本{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="bi bi-sliders"></i> 系統設定
+        </h1>
+    </div>
+</div>
+
+<div class="row">
+    <!-- AI API 設定卡片 -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-robot"></i> AI API 設定
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="card-text">設定 OpenAI 和 Gemini AI 服務的 API Keys，啟用智慧單字補齊功能。</p>
+
+                <!-- OpenAI 狀態 -->
+                <div class="mb-3">
+                    <h6>
+                        <span class="status-indicator {{ 'status-success' if status.openai.enabled else 'status-danger' }}"></span>
+                        OpenAI
+                    </h6>
+                    <small class="text-muted">
+                        {% if status.openai.configured %}
+                            已設定 ({{ status.openai.model }})
+                            {% if status.openai.valid %}
+                                <span class="badge bg-success status-badge">格式正確</span>
+                            {% else %}
+                                <span class="badge bg-warning status-badge">格式可能有誤</span>
+                            {% endif %}
+                        {% else %}
+                            未設定
+                        {% endif %}
+                    </small>
+                </div>
+
+                <!-- Gemini 狀態 -->
+                <div class="mb-3">
+                    <h6>
+                        <span class="status-indicator {{ 'status-success' if status.gemini.enabled else 'status-danger' }}"></span>
+                        Google Gemini
+                    </h6>
+                    <small class="text-muted">
+                        {% if status.gemini.configured %}
+                            已設定 ({{ status.gemini.model }})
+                            {% if status.gemini.valid %}
+                                <span class="badge bg-success status-badge">格式正確</span>
+                            {% else %}
+                                <span class="badge bg-warning status-badge">格式可能有誤</span>
+                            {% endif %}
+                        {% else %}
+                            未設定
+                        {% endif %}
+                    </small>
+                </div>
+
+                <!-- 一般設定 -->
+                <div class="mb-3">
+                    <h6>一般設定</h6>
+                    <small class="text-muted">
+                        預設提供商: {{ status.settings.default_provider.upper() }}<br>
+                        可用提供商: {{ status.settings.available_providers|join(', ')|upper if status.settings.available_providers else '無' }}<br>
+                        超時時間: {{ status.settings.timeout }} 秒<br>
+                        最大重試: {{ status.settings.max_retries }} 次
+                    </small>
+                </div>
+            </div>
+            <div class="card-footer">
+                <a href="{{ url_for('api_settings') }}" class="btn btn-primary">
+                    <i class="bi bi-gear"></i> 設定 API Keys
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 其他設定卡片 -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-database"></i> 資料管理
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="card-text">管理你的單字資料，包括匯入、匯出和備份功能。</p>
+
+                <div class="mb-3">
+                    <h6>資料統計</h6>
+                    <small class="text-muted">
+                        總單字數: 0<br>
+                        最後更新: 尚未建立資料
+                    </small>
+                </div>
+            </div>
+            <div class="card-footer">
+                <button class="btn btn-outline-primary me-2" disabled>
+                    <i class="bi bi-download"></i> 匯出資料
+                </button>
+                <button class="btn btn-outline-primary" disabled>
+                    <i class="bi bi-upload"></i> 匯入資料
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- 應用程式資訊 -->
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-info-circle"></i> 應用程式資訊
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>版本資訊</h6>
+                        <ul class="list-unstyled">
+                            <li><strong>應用程式版本:</strong> 1.0.0</li>
+                            <li><strong>Flask 版本:</strong> 2.3.3</li>
+                            <li><strong>Python 版本:</strong> 3.13.0</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>功能狀態</h6>
+                        <ul class="list-unstyled">
+                            <li>
+                                <span class="status-indicator status-success"></span>
+                                資料模型和驗證
+                            </li>
+                            <li>
+                                <span class="status-indicator status-success"></span>
+                                JSON 序列化
+                            </li>
+                            <li>
+                                <span class="status-indicator {{ 'status-success' if status.settings.available_providers else 'status-warning' }}"></span>
+                                AI 自動補齊 {{ '(已啟用)' if status.settings.available_providers else '(需要設定 API Key)' }}
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
