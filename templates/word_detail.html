@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title %}
+{% if word %}{{ word.word }} - 英文單字筆記本{% else %}單字不存在{% endif %}
+{% endblock %}
+
+{% block content %}
+{% if word %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h2 class="mb-0">{{ word.word }}</h2>
+                <div>
+                    <a href="{{ url_for('edit_word', word_id=word.id) }}" class="btn btn-outline-primary btn-sm">編輯</a>
+                    <form method="POST" action="{{ url_for('delete_word', word_id=word.id) }}" class="d-inline" 
+                          onsubmit="return confirm('確定要刪除這個單字嗎？')">
+                        <button type="submit" class="btn btn-outline-danger btn-sm">刪除</button>
+                    </form>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>中文解釋</h5>
+                        <p>{{ word.chinese_meaning }}</p>
+                        
+                        {% if word.english_meaning %}
+                        <h5>英文解釋</h5>
+                        <p>{{ word.english_meaning }}</p>
+                        {% endif %}
+                        
+                        {% if word.phonetic %}
+                        <h5>音標</h5>
+                        <p><code>{{ word.phonetic }}</code></p>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-6">
+                        {% if word.example_sentence %}
+                        <h5>例句</h5>
+                        <p class="fst-italic">"{{ word.example_sentence }}"</p>
+                        {% endif %}
+                        
+                        {% if word.synonyms %}
+                        <h5>同義詞</h5>
+                        <p>
+                            {% for synonym in word.synonyms %}
+                                <span class="badge bg-primary me-1">{{ synonym }}</span>
+                            {% endfor %}
+                        </p>
+                        {% endif %}
+                        
+                        {% if word.antonyms %}
+                        <h5>反義詞</h5>
+                        <p>
+                            {% for antonym in word.antonyms %}
+                                <span class="badge bg-secondary me-1">{{ antonym }}</span>
+                            {% endfor %}
+                        </p>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <hr>
+                <div class="row">
+                    <div class="col-md-6">
+                        <small class="text-muted">建立時間: {{ word.created_date.strftime('%Y-%m-%d %H:%M') }}</small>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <small class="text-muted">更新時間: {{ word.updated_date.strftime('%Y-%m-%d %H:%M') }}</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mt-3">
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">回到首頁</a>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="text-center py-5">
+    <h3 class="text-muted">找不到這個單字</h3>
+    <p class="text-muted">可能已經被刪除或不存在</p>
+    <a href="{{ url_for('index') }}" class="btn btn-primary">回到首頁</a>
+</div>
+{% endif %}
+{% endblock %}

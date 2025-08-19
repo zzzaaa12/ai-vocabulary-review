@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}首頁 - 英文單字筆記本{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>我的單字本</h1>
+            <a href="{{ url_for('add_word') }}" class="btn btn-primary">新增單字</a>
+        </div>
+
+        <!-- 時間篩選 -->
+        <div class="mb-3">
+            <div class="btn-group" role="group">
+                <a href="{{ url_for('index', time_filter='all') }}" 
+                   class="btn {{ 'btn-primary' if time_filter == 'all' else 'btn-outline-primary' }}">
+                    全部
+                </a>
+                <a href="{{ url_for('index', time_filter='recent_2_days') }}" 
+                   class="btn {{ 'btn-primary' if time_filter == 'recent_2_days' else 'btn-outline-primary' }}">
+                    最近2天
+                </a>
+                <a href="{{ url_for('index', time_filter='recent_week') }}" 
+                   class="btn {{ 'btn-primary' if time_filter == 'recent_week' else 'btn-outline-primary' }}">
+                    最近一週
+                </a>
+                <a href="{{ url_for('index', time_filter='recent_2_weeks') }}" 
+                   class="btn {{ 'btn-primary' if time_filter == 'recent_2_weeks' else 'btn-outline-primary' }}">
+                    最近兩週
+                </a>
+                <a href="{{ url_for('index', time_filter='recent_month') }}" 
+                   class="btn {{ 'btn-primary' if time_filter == 'recent_month' else 'btn-outline-primary' }}">
+                    最近一個月
+                </a>
+            </div>
+        </div>
+
+        <!-- 搜尋框 -->
+        <div class="mb-4">
+            <div class="input-group">
+                <input type="text" class="form-control" placeholder="搜尋單字..." id="searchInput">
+                <button class="btn btn-outline-secondary" type="button" id="searchBtn">搜尋</button>
+            </div>
+        </div>
+
+        <!-- 單字列表 -->
+        {% if words %}
+            <div class="row">
+                {% for word in words %}
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">{{ word.word }}</h5>
+                                <p class="card-text">{{ word.chinese_meaning }}</p>
+                                {% if word.phonetic %}
+                                    <small class="text-muted">{{ word.phonetic }}</small>
+                                {% endif %}
+                                <div class="mt-2">
+                                    <a href="{{ url_for('word_detail', word_id=word.id) }}" class="btn btn-sm btn-outline-primary">查看</a>
+                                    <a href="{{ url_for('edit_word', word_id=word.id) }}" class="btn btn-sm btn-outline-secondary">編輯</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <h3 class="text-muted">還沒有單字</h3>
+                <p class="text-muted">開始新增你的第一個單字吧！</p>
+                <a href="{{ url_for('add_word') }}" class="btn btn-primary">新增單字</a>
+            </div>
+        {% endif %}
+
+        <!-- 統計資訊 -->
+        <div class="mt-4">
+            <small class="text-muted">總共 {{ total_words }} 個單字</small>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('searchBtn').addEventListener('click', function() {
+    const query = document.getElementById('searchInput').value;
+    if (query.trim()) {
+        window.location.href = `{{ url_for('search') }}?q=${encodeURIComponent(query)}`;
+    }
+});
+
+document.getElementById('searchInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        document.getElementById('searchBtn').click();
+    }
+});
+</script>
+{% endblock %}

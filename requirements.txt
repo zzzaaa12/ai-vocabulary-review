@@ -1,0 +1,5 @@
+# Flask web framework
+Flask==2.3.3
+
+# Additional dependencies for development
+python-dotenv==1.0.0
