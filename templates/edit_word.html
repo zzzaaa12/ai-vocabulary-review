@@ -1,68 +1,224 @@
 {% extends "base.html" %}
 
-{% block title %}
-{% if word %}編輯 {{ word.word }} - 英文單字筆記本{% else %}編輯單字{% endif %}
-{% endblock %}
+{% block title %}編輯單字 - {{ word.word }}{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-8">
-        <div class="card">
-            <div class="card-header">
-                <h3 class="mb-0">編輯單字</h3>
-            </div>
-            <div class="card-body">
-                {% if word %}
-                <form method="POST">
-                    <div class="mb-3">
-                        <label for="word" class="form-label">英文單字 *</label>
-                        <input type="text" class="form-control" id="word" name="word" value="{{ word.word }}" required>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="chinese_meaning" class="form-label">中文解釋 *</label>
-                        <input type="text" class="form-control" id="chinese_meaning" name="chinese_meaning" value="{{ word.chinese_meaning }}" required>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="english_meaning" class="form-label">英文解釋</label>
-                        <textarea class="form-control" id="english_meaning" name="english_meaning" rows="2">{{ word.english_meaning }}</textarea>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="phonetic" class="form-label">音標</label>
-                        <input type="text" class="form-control" id="phonetic" name="phonetic" value="{{ word.phonetic }}" placeholder="例如: /ɪɡˈzæmpəl/">
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="example_sentence" class="form-label">例句</label>
-                        <textarea class="form-control" id="example_sentence" name="example_sentence" rows="2">{{ word.example_sentence }}</textarea>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="synonyms" class="form-label">同義詞</label>
-                        <input type="text" class="form-control" id="synonyms" name="synonyms" value="{{ word.synonyms | join(', ') }}" placeholder="用逗號分隔，例如: big, large, huge">
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="antonyms" class="form-label">反義詞</label>
-                        <input type="text" class="form-control" id="antonyms" name="antonyms" value="{{ word.antonyms | join(', ') }}" placeholder="用逗號分隔，例如: small, tiny, little">
-                    </div>
-                    
-                    <div class="d-flex justify-content-between">
-                        <a href="{{ url_for('word_detail', word_id=word.id) }}" class="btn btn-secondary">取消</a>
-                        <button type="submit" class="btn btn-primary">更新單字</button>
-                    </div>
-                </form>
-                {% else %}
-                <div class="text-center py-5">
-                    <h3 class="text-muted">找不到這個單字</h3>
-                    <p class="text-muted">可能已經被刪除或不存在</p>
-                    <a href="{{ url_for('index') }}" class="btn btn-primary">回到首頁</a>
-                </div>
-                {% endif %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>
+                <i class="bi bi-pencil"></i> 編輯單字
+            </h1>
+            <div>
+                <a href="{{ url_for('word_detail', word_id=word.id) }}" class="btn btn-outline-secondary me-2">
+                    <i class="bi bi-arrow-left"></i> 返回詳細頁面
+                </a>
+                <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-list"></i> 返回列表
+                </a>
             </div>
         </div>
     </div>
 </div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <form method="POST" id="editWordForm">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-pencil"></i> 編輯單字資訊
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- 英文單字 -->
+                    <div class="form-floating mb-3">
+                        <input type="text" class="form-control" id="word" name="word" placeholder="請輸入英文單字" value="{{ word.word }}" required>
+                        <label for="word">
+                            <i class="bi bi-type"></i> 英文單字 *
+                        </label>
+                    </div>
+
+                    <!-- 中文翻譯 -->
+                    <div class="form-floating mb-3">
+                        <input type="text" class="form-control" id="chinese_meaning" name="chinese_meaning" placeholder="請輸入中文翻譯" value="{{ word.chinese_meaning }}" required>
+                        <label for="chinese_meaning">
+                            <i class="bi bi-translate"></i> 中文翻譯 *
+                        </label>
+                    </div>
+
+                    <!-- 英文定義 -->
+                    <div class="form-floating mb-3">
+                        <textarea class="form-control" id="english_meaning" name="english_meaning" placeholder="請輸入英文定義" style="height: 80px">{{ word.english_meaning }}</textarea>
+                        <label for="english_meaning">
+                            <i class="bi bi-book"></i> 英文定義
+                        </label>
+                    </div>
+
+                    <!-- 音標 -->
+                    <div class="form-floating mb-3">
+                        <input type="text" class="form-control" id="phonetic" name="phonetic" placeholder="請輸入音標" value="{{ word.phonetic }}">
+                        <label for="phonetic">
+                            <i class="bi bi-volume-up"></i> 音標
+                        </label>
+                    </div>
+
+                    <!-- 例句 -->
+                    <div class="form-floating mb-3">
+                        <textarea class="form-control" id="example_sentence" name="example_sentence" placeholder="請輸入例句" style="height: 80px">{{ word.example_sentence }}</textarea>
+                        <label for="example_sentence">
+                            <i class="bi bi-chat-quote"></i> 例句
+                        </label>
+                    </div>
+
+                    <!-- 同義詞 -->
+                    <div class="form-floating mb-3">
+                        <input type="text" class="form-control" id="synonyms" name="synonyms" placeholder="請輸入同義詞，用逗號分隔" value="{{ word.synonyms|join(', ') if word.synonyms else '' }}">
+                        <label for="synonyms">
+                            <i class="bi bi-arrow-right-circle"></i> 同義詞
+                        </label>
+                        <div class="form-text">多個同義詞請用逗號分隔，例如：big, large, huge</div>
+                    </div>
+
+                    <!-- 反義詞 -->
+                    <div class="form-floating mb-3">
+                        <input type="text" class="form-control" id="antonyms" name="antonyms" placeholder="請輸入反義詞，用逗號分隔" value="{{ word.antonyms|join(', ') if word.antonyms else '' }}">
+                        <label for="antonyms">
+                            <i class="bi bi-arrow-left-circle"></i> 反義詞
+                        </label>
+                        <div class="form-text">多個反義詞請用逗號分隔，例如：small, tiny, little</div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-circle"></i> 更新單字
+                        </button>
+                        <button type="reset" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-clockwise"></i> 重設
+                        </button>
+                        <a href="{{ url_for('word_detail', word_id=word.id) }}" class="btn btn-outline-danger">
+                            <i class="bi bi-x-circle"></i> 取消
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="col-lg-4">
+        <!-- 原始資訊卡片 -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-info-circle"></i> 原始資訊
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <strong>原始單字:</strong><br>
+                    <span class="text-muted">{{ word.word }}</span>
+                </div>
+                <div class="mb-3">
+                    <strong>原始中文翻譯:</strong><br>
+                    <span class="text-muted">{{ word.chinese_meaning }}</span>
+                </div>
+                <div class="mb-3">
+                    <strong>建立時間:</strong><br>
+                    <small class="text-muted">{{ word.created_date.strftime('%Y年%m月%d日 %H:%M') }}</small>
+                </div>
+                <div class="mb-3">
+                    <strong>最後更新:</strong><br>
+                    <small class="text-muted">{{ word.updated_date.strftime('%Y年%m月%d日 %H:%M') }}</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- 編輯提示卡片 -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-lightbulb"></i> 編輯提示
+                </h6>
+            </div>
+            <div class="card-body">
+                <h6>必填欄位</h6>
+                <ul class="small text-muted mb-3">
+                    <li>英文單字</li>
+                    <li>中文翻譯</li>
+                </ul>
+
+                <h6>格式說明</h6>
+                <ul class="small text-muted mb-3">
+                    <li>音標建議使用 IPA 格式，例如：/ˈeksəmpəl/</li>
+                    <li>同義詞和反義詞用逗號分隔</li>
+                    <li>例句盡量簡潔明瞭</li>
+                </ul>
+
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    <strong>提示:</strong> 修改後點擊「更新單字」即可儲存變更。
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 表單提交處理
+document.getElementById('editWordForm').addEventListener('submit', function() {
+    const submitBtn = this.querySelector('button[type="submit"]');
+    submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> 更新中...';
+    submitBtn.disabled = true;
+});
+
+// 重設按鈕處理
+document.querySelector('button[type="reset"]').addEventListener('click', function() {
+    if (confirm('確定要重設所有欄位嗎？這會恢復到原始值。')) {
+        // 重設表單到原始值
+        document.getElementById('word').value = '{{ word.word }}';
+        document.getElementById('chinese_meaning').value = '{{ word.chinese_meaning }}';
+        document.getElementById('english_meaning').value = '{{ word.english_meaning }}';
+        document.getElementById('phonetic').value = '{{ word.phonetic }}';
+        document.getElementById('example_sentence').value = '{{ word.example_sentence }}';
+        document.getElementById('synonyms').value = '{{ word.synonyms|join(", ") if word.synonyms else "" }}';
+        document.getElementById('antonyms').value = '{{ word.antonyms|join(", ") if word.antonyms else "" }}';
+    }
+});
+
+// 表單變更檢測
+let originalFormData = new FormData(document.getElementById('editWordForm'));
+let hasChanges = false;
+
+document.getElementById('editWordForm').addEventListener('input', function() {
+    const currentFormData = new FormData(this);
+    hasChanges = false;
+
+    for (let [key, value] of currentFormData.entries()) {
+        if (originalFormData.get(key) !== value) {
+            hasChanges = true;
+            break;
+        }
+    }
+});
+
+// 離開頁面前確認
+window.addEventListener('beforeunload', function(e) {
+    if (hasChanges) {
+        e.preventDefault();
+        e.returnValue = '您有未儲存的變更，確定要離開嗎？';
+    }
+});
+
+// 取消按鈕確認
+document.querySelector('a[href*="word_detail"]').addEventListener('click', function(e) {
+    if (hasChanges) {
+        if (!confirm('您有未儲存的變更，確定要離開嗎？')) {
+            e.preventDefault();
+        }
+    }
+});
+</script>
 {% endblock %}

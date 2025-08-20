@@ -84,8 +84,18 @@ def register_routes(app):
         Args:
             word_id: Unique identifier for the word
         """
-        # TODO: Implement word retrieval from service
-        return render_template('word_detail.html', word=None)
+        try:
+            word = app.vocabulary_service.get_word_by_id(word_id)
+
+            if not word:
+                flash('找不到指定的單字', 'error')
+                return redirect(url_for('index'))
+
+            return render_template('word_detail.html', word=word)
+
+        except Exception as e:
+            flash(f'載入單字時發生錯誤：{str(e)}', 'error')
+            return redirect(url_for('index'))
 
     @app.route('/add', methods=['GET', 'POST'])
     def add_word():
@@ -154,12 +164,68 @@ def register_routes(app):
             word_id: Unique identifier for the word to edit
         """
         if request.method == 'POST':
-            # TODO: Implement word update logic
-            flash('單字更新成功！', 'success')
-            return redirect(url_for('word_detail', word_id=word_id))
+            try:
+                # Get form data
+                word = request.form.get('word', '').strip()
+                chinese_meaning = request.form.get('chinese_meaning', '').strip()
+                english_meaning = request.form.get('english_meaning', '').strip()
+                phonetic = request.form.get('phonetic', '').strip()
+                example_sentence = request.form.get('example_sentence', '').strip()
+                synonyms_str = request.form.get('synonyms', '').strip()
+                antonyms_str = request.form.get('antonyms', '').strip()
 
-        # TODO: Retrieve word data for editing
-        return render_template('edit_word.html', word=None)
+                # Validate required fields
+                if not word:
+                    flash('請輸入英文單字', 'error')
+                    return redirect(url_for('edit_word', word_id=word_id))
+
+                if not chinese_meaning:
+                    flash('請輸入中文翻譯', 'error')
+                    return redirect(url_for('edit_word', word_id=word_id))
+
+                # Parse synonyms and antonyms
+                synonyms = [s.strip() for s in synonyms_str.split(',') if s.strip()] if synonyms_str else []
+                antonyms = [a.strip() for a in antonyms_str.split(',') if a.strip()] if antonyms_str else []
+
+                # Update word using vocabulary service
+                updated_word = app.vocabulary_service.update_word(
+                    word_id,
+                    word=word,
+                    chinese_meaning=chinese_meaning,
+                    english_meaning=english_meaning,
+                    phonetic=phonetic,
+                    example_sentence=example_sentence,
+                    synonyms=synonyms,
+                    antonyms=antonyms
+                )
+
+                if updated_word:
+                    flash(f'單字「{word}」更新成功！', 'success')
+                    return redirect(url_for('word_detail', word_id=word_id))
+                else:
+                    flash('找不到指定的單字', 'error')
+                    return redirect(url_for('index'))
+
+            except ValueError as e:
+                flash(f'更新失敗：{str(e)}', 'error')
+                return redirect(url_for('edit_word', word_id=word_id))
+            except Exception as e:
+                flash(f'系統錯誤：{str(e)}', 'error')
+                return redirect(url_for('edit_word', word_id=word_id))
+
+        # GET request - retrieve word data for editing
+        try:
+            word = app.vocabulary_service.get_word_by_id(word_id)
+
+            if not word:
+                flash('找不到指定的單字', 'error')
+                return redirect(url_for('index'))
+
+            return render_template('edit_word.html', word=word)
+
+        except Exception as e:
+            flash(f'載入單字時發生錯誤：{str(e)}', 'error')
+            return redirect(url_for('index'))
 
     @app.route('/delete/<word_id>', methods=['POST'])
     def delete_word(word_id):
@@ -169,8 +235,25 @@ def register_routes(app):
         Args:
             word_id: Unique identifier for the word to delete
         """
-        # TODO: Implement word deletion logic
-        flash('單字刪除成功！', 'success')
+        try:
+            # Get word info before deletion for flash message
+            word = app.vocabulary_service.get_word_by_id(word_id)
+
+            if not word:
+                flash('找不到指定的單字', 'error')
+                return redirect(url_for('index'))
+
+            # Delete word using vocabulary service
+            success = app.vocabulary_service.delete_word(word_id)
+
+            if success:
+                flash(f'單字「{word.word}」刪除成功！', 'success')
+            else:
+                flash('刪除失敗，找不到指定的單字', 'error')
+
+        except Exception as e:
+            flash(f'刪除時發生錯誤：{str(e)}', 'error')
+
         return redirect(url_for('index'))
 
     @app.route('/search')
