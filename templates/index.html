@@ -20,26 +20,78 @@
 <div class="row">
     <div class="col-md-8">
         <div class="card">
-            <div class="card-header">
+            <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0">
                     <i class="bi bi-list"></i> 我的單字本
                 </h5>
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-funnel"></i>
+                        {% if time_filter == 'all' %}全部
+                        {% elif time_filter == 'recent_2_days' %}近二日
+                        {% elif time_filter == 'recent_week' %}近一週
+                        {% elif time_filter == 'recent_2_weeks' %}近兩週
+                        {% elif time_filter == 'recent_month' %}近一個月
+                        {% else %}全部{% endif %}
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item {% if time_filter == 'all' %}active{% endif %}" href="{{ url_for('index', time_filter='all') }}">全部</a></li>
+                        <li><a class="dropdown-item {% if time_filter == 'recent_2_days' %}active{% endif %}" href="{{ url_for('index', time_filter='recent_2_days') }}">近二日</a></li>
+                        <li><a class="dropdown-item {% if time_filter == 'recent_week' %}active{% endif %}" href="{{ url_for('index', time_filter='recent_week') }}">近一週</a></li>
+                        <li><a class="dropdown-item {% if time_filter == 'recent_2_weeks' %}active{% endif %}" href="{{ url_for('index', time_filter='recent_2_weeks') }}">近兩週</a></li>
+                        <li><a class="dropdown-item {% if time_filter == 'recent_month' %}active{% endif %}" href="{{ url_for('index', time_filter='recent_month') }}">近一個月</a></li>
+                    </ul>
+                </div>
             </div>
             <div class="card-body">
                 {% if words %}
                     <!-- 單字列表 -->
                     <div class="list-group">
                         {% for word in words %}
-                            <a href="{{ url_for('word_detail', word_id=word.id) }}" class="list-group-item list-group-item-action">
-                                <div class="d-flex w-100 justify-content-between">
-                                    <h6 class="mb-1">{{ word.word }}</h6>
-                                    <small>{{ word.created_date.strftime('%Y-%m-%d') }}</small>
+                            <div class="list-group-item">
+                                <div class="d-flex w-100 justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex align-items-center mb-2">
+                                            <h5 class="mb-0 me-3">{{ word.word }}</h5>
+                                            {% if word.phonetic %}
+                                                <span class="badge bg-light text-dark">{{ word.phonetic }}</span>
+                                            {% endif %}
+                                        </div>
+                                        <p class="mb-1 text-primary">{{ word.chinese_meaning }}</p>
+                                        {% if word.english_meaning %}
+                                            <p class="mb-1 text-muted small">{{ word.english_meaning }}</p>
+                                        {% endif %}
+                                        {% if word.example_sentence %}
+                                            <p class="mb-1 fst-italic small">"{{ word.example_sentence }}"</p>
+                                        {% endif %}
+                                        {% if word.synonyms or word.antonyms %}
+                                            <div class="mt-2">
+                                                {% if word.synonyms %}
+                                                    <span class="me-3">
+                                                        <small class="text-success">同義詞: {{ word.synonyms|join(', ') }}</small>
+                                                    </span>
+                                                {% endif %}
+                                                {% if word.antonyms %}
+                                                    <span>
+                                                        <small class="text-danger">反義詞: {{ word.antonyms|join(', ') }}</small>
+                                                    </span>
+                                                {% endif %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="text-end">
+                                        <small class="text-muted d-block">{{ word.created_date.strftime('%m/%d') }}</small>
+                                        <div class="btn-group btn-group-sm mt-1" role="group">
+                                            <a href="{{ url_for('word_detail', word_id=word.id) }}" class="btn btn-outline-primary btn-sm">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                            <a href="{{ url_for('edit_word', word_id=word.id) }}" class="btn btn-outline-secondary btn-sm">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                        </div>
+                                    </div>
                                 </div>
-                                <p class="mb-1">{{ word.chinese_meaning }}</p>
-                                {% if word.phonetic %}
-                                    <small class="text-muted">{{ word.phonetic }}</small>
-                                {% endif %}
-                            </a>
+                            </div>
                         {% endfor %}
                     </div>
                 {% else %}

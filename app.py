@@ -53,12 +53,28 @@ def register_routes(app):
         """
         time_filter = request.args.get('time_filter', 'all')
 
-        # TODO: Implement vocabulary service integration
-        # For now, return empty template
-        return render_template('index.html',
-                             words=[],
-                             time_filter=time_filter,
-                             total_words=0)
+        try:
+            # Get words based on time filter
+            if time_filter == 'all':
+                words = app.vocabulary_service.get_all_words()
+            else:
+                words = app.vocabulary_service.get_words_by_time_filter(time_filter)
+
+            # Sort by creation date (newest first)
+            words.sort(key=lambda w: w.created_date, reverse=True)
+
+            total_words = app.vocabulary_service.get_total_word_count()
+
+            return render_template('index.html',
+                                 words=words,
+                                 time_filter=time_filter,
+                                 total_words=total_words)
+        except Exception as e:
+            flash(f'載入單字時發生錯誤：{str(e)}', 'error')
+            return render_template('index.html',
+                                 words=[],
+                                 time_filter=time_filter,
+                                 total_words=0)
 
     @app.route('/word/<word_id>')
     def word_detail(word_id):
@@ -79,9 +95,53 @@ def register_routes(app):
         POST: Process form submission
         """
         if request.method == 'POST':
-            # TODO: Implement word creation logic
-            flash('單字新增成功！', 'success')
-            return redirect(url_for('index'))
+            try:
+                # Get form data
+                word = request.form.get('word', '').strip()
+                chinese_meaning = request.form.get('chinese_meaning', '').strip()
+                english_meaning = request.form.get('english_meaning', '').strip()
+                phonetic = request.form.get('phonetic', '').strip()
+                example_sentence = request.form.get('example_sentence', '').strip()
+                synonyms_str = request.form.get('synonyms', '').strip()
+                antonyms_str = request.form.get('antonyms', '').strip()
+
+                # Validate required fields
+                if not word:
+                    flash('請輸入英文單字', 'error')
+                    return render_template('add_word.html')
+
+                if not chinese_meaning:
+                    flash('請輸入中文翻譯', 'error')
+                    return render_template('add_word.html')
+
+                # Parse synonyms and antonyms
+                synonyms = [s.strip() for s in synonyms_str.split(',') if s.strip()] if synonyms_str else []
+                antonyms = [a.strip() for a in antonyms_str.split(',') if a.strip()] if antonyms_str else []
+
+                # Create Word object
+                from models.vocabulary import Word
+                new_word = Word(
+                    word=word,
+                    chinese_meaning=chinese_meaning,
+                    english_meaning=english_meaning,
+                    phonetic=phonetic,
+                    example_sentence=example_sentence,
+                    synonyms=synonyms,
+                    antonyms=antonyms
+                )
+
+                # Save word using vocabulary service
+                app.vocabulary_service.add_word(new_word)
+
+                flash(f'單字「{word}」新增成功！', 'success')
+                return redirect(url_for('index'))
+
+            except ValueError as e:
+                flash(f'新增失敗：{str(e)}', 'error')
+                return render_template('add_word.html')
+            except Exception as e:
+                flash(f'系統錯誤：{str(e)}', 'error')
+                return render_template('add_word.html')
 
         return render_template('add_word.html')
 
