@@ -183,8 +183,41 @@ def register_routes(app):
         if not query:
             return jsonify({'words': [], 'message': '請輸入搜尋關鍵字'})
 
-        # TODO: Implement search logic
-        return jsonify({'words': [], 'message': f'搜尋 "{query}" 的結果'})
+        try:
+            # Use vocabulary service to search
+            words = app.vocabulary_service.search_words(query)
+
+            # Convert words to dictionary format for JSON response
+            words_data = []
+            for word in words:
+                words_data.append({
+                    'id': word.id,
+                    'word': word.word,
+                    'chinese_meaning': word.chinese_meaning,
+                    'english_meaning': word.english_meaning,
+                    'phonetic': word.phonetic,
+                    'example_sentence': word.example_sentence,
+                    'synonyms': word.synonyms,
+                    'antonyms': word.antonyms,
+                    'created_date': word.created_date.strftime('%Y-%m-%d')
+                })
+
+            message = f'找到 {len(words)} 個相關單字' if words else f'沒有找到包含 "{query}" 的單字'
+
+            return jsonify({
+                'words': words_data,
+                'message': message,
+                'query': query,
+                'count': len(words)
+            })
+
+        except Exception as e:
+            return jsonify({
+                'words': [],
+                'message': f'搜尋時發生錯誤: {str(e)}',
+                'query': query,
+                'count': 0
+            })
 
     @app.route('/settings')
     def settings():

@@ -95,29 +95,48 @@
                 <h5 class="card-title mb-0">
                     <i class="bi bi-list"></i> 我的單字本
                 </h5>
-                <div class="dropdown">
-                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                        <i class="bi bi-funnel"></i>
-                        {% if time_filter == 'all' %}全部
-                        {% elif time_filter == 'recent_2_days' %}近二日
-                        {% elif time_filter == 'recent_week' %}近一週
-                        {% elif time_filter == 'recent_2_weeks' %}近兩週
-                        {% elif time_filter == 'recent_month' %}近一個月
-                        {% else %}全部{% endif %}
-                    </button>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item {% if time_filter == 'all' %}active{% endif %}" href="{{ url_for('index', time_filter='all') }}">全部</a></li>
-                        <li><a class="dropdown-item {% if time_filter == 'recent_2_days' %}active{% endif %}" href="{{ url_for('index', time_filter='recent_2_days') }}">近二日</a></li>
-                        <li><a class="dropdown-item {% if time_filter == 'recent_week' %}active{% endif %}" href="{{ url_for('index', time_filter='recent_week') }}">近一週</a></li>
-                        <li><a class="dropdown-item {% if time_filter == 'recent_2_weeks' %}active{% endif %}" href="{{ url_for('index', time_filter='recent_2_weeks') }}">近兩週</a></li>
-                        <li><a class="dropdown-item {% if time_filter == 'recent_month' %}active{% endif %}" href="{{ url_for('index', time_filter='recent_month') }}">近一個月</a></li>
-                    </ul>
+                <div class="d-flex gap-2">
+                    <!-- 搜尋框 -->
+                    <div class="input-group" style="max-width: 300px;">
+                        <input type="text" class="form-control form-control-sm" id="searchInput" placeholder="搜尋單字或中文..." autocomplete="off">
+                        <button class="btn btn-outline-primary btn-sm" type="button" id="searchBtn">
+                            <i class="bi bi-search"></i>
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" type="button" id="clearSearchBtn" style="display: none;">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    </div>
+
+                    <!-- 時間篩選 -->
+                    <div class="dropdown">
+                        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-funnel"></i>
+                            {% if time_filter == 'all' %}全部
+                            {% elif time_filter == 'recent_2_days' %}近二日
+                            {% elif time_filter == 'recent_week' %}近一週
+                            {% elif time_filter == 'recent_2_weeks' %}近兩週
+                            {% elif time_filter == 'recent_month' %}近一個月
+                            {% else %}全部{% endif %}
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item {% if time_filter == 'all' %}active{% endif %}" href="{{ url_for('index', time_filter='all') }}">全部</a></li>
+                            <li><a class="dropdown-item {% if time_filter == 'recent_2_days' %}active{% endif %}" href="{{ url_for('index', time_filter='recent_2_days') }}">近二日</a></li>
+                            <li><a class="dropdown-item {% if time_filter == 'recent_week' %}active{% endif %}" href="{{ url_for('index', time_filter='recent_week') }}">近一週</a></li>
+                            <li><a class="dropdown-item {% if time_filter == 'recent_2_weeks' %}active{% endif %}" href="{{ url_for('index', time_filter='recent_2_weeks') }}">近兩週</a></li>
+                            <li><a class="dropdown-item {% if time_filter == 'recent_month' %}active{% endif %}" href="{{ url_for('index', time_filter='recent_month') }}">近一個月</a></li>
+                        </ul>
+                    </div>
                 </div>
             </div>
             <div class="card-body">
-                {% if words %}
-                    <!-- 單字列表 -->
-                    <div class="list-group">
+                <!-- 搜尋狀態顯示 -->
+                <div id="searchStatus" style="display: none;"></div>
+
+                <!-- 單字列表容器 -->
+                <div id="wordListContainer">
+                    {% if words %}
+                        <!-- 單字列表 -->
+                        <div class="list-group" id="wordList">
                         {% for word in words %}
                             <div class="list-group-item">
                                 <div class="d-flex w-100 justify-content-between align-items-start">
@@ -164,8 +183,8 @@
                                 </div>
                             </div>
                         {% endfor %}
-                    </div>
-                {% else %}
+                        </div>
+                    {% else %}
                     <div class="text-center py-5">
                         <i class="bi bi-book display-1 text-muted"></i>
                         <h4 class="mt-3 text-muted">還沒有任何單字</h4>
@@ -173,8 +192,9 @@
                         <a href="{{ url_for('add_word') }}" class="btn btn-primary">
                             <i class="bi bi-plus-circle"></i> 新增單字
                         </a>
-                    </div>
-                {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
@@ -414,6 +434,193 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         `;
     }
+});
+
+// 搜尋功能
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchInput');
+    const searchBtn = document.getElementById('searchBtn');
+    const clearSearchBtn = document.getElementById('clearSearchBtn');
+    const searchStatus = document.getElementById('searchStatus');
+    const wordListContainer = document.getElementById('wordListContainer');
+
+    let searchTimeout;
+    let isSearchMode = false;
+
+    // 監聽搜尋輸入
+    searchInput.addEventListener('input', function() {
+        const query = this.value.trim();
+
+        // 清除之前的延遲搜尋
+        clearTimeout(searchTimeout);
+
+        if (query) {
+            clearSearchBtn.style.display = 'block';
+            // 延遲搜尋，避免過於頻繁的請求
+            searchTimeout = setTimeout(() => {
+                performSearch(query);
+            }, 500);
+        } else {
+            clearSearchBtn.style.display = 'none';
+            clearSearch();
+        }
+    });
+
+    // 監聽 Enter 鍵
+    searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            clearTimeout(searchTimeout);
+            const query = this.value.trim();
+            if (query) {
+                performSearch(query);
+            }
+        }
+    });
+
+    // 搜尋按鈕點擊
+    searchBtn.addEventListener('click', function() {
+        const query = searchInput.value.trim();
+        if (query) {
+            performSearch(query);
+        }
+    });
+
+    // 清除搜尋按鈕點擊
+    clearSearchBtn.addEventListener('click', function() {
+        clearSearch();
+    });
+
+    function performSearch(query) {
+        // 顯示載入狀態
+        searchBtn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+        searchBtn.disabled = true;
+        showSearchStatus('搜尋中...', 'info');
+        isSearchMode = true;
+
+        // 發送搜尋請求
+        fetch(`/search?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                displaySearchResults(data);
+                showSearchStatus(data.message, data.words.length > 0 ? 'success' : 'warning');
+            })
+            .catch(error => {
+                console.error('搜尋錯誤:', error);
+                showSearchStatus('搜尋時發生錯誤，請重試', 'danger');
+            })
+            .finally(() => {
+                // 恢復搜尋按鈕
+                searchBtn.innerHTML = '<i class="bi bi-search"></i>';
+                searchBtn.disabled = false;
+            });
+    }
+
+    function displaySearchResults(data) {
+        if (data.words.length === 0) {
+            wordListContainer.innerHTML = `
+                <div class="text-center py-5">
+                    <i class="bi bi-search display-1 text-muted"></i>
+                    <h4 class="mt-3 text-muted">沒有找到相關單字</h4>
+                    <p class="text-muted">試試其他關鍵字或檢查拼寫</p>
+                    <button class="btn btn-outline-primary" onclick="clearSearch()">
+                        <i class="bi bi-arrow-left"></i> 返回全部單字
+                    </button>
+                </div>
+            `;
+            return;
+        }
+
+        // 生成搜尋結果HTML
+        let resultsHtml = '<div class="list-group">';
+
+        data.words.forEach(word => {
+            resultsHtml += `
+                <div class="list-group-item">
+                    <div class="d-flex w-100 justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center mb-2">
+                                <h5 class="mb-0 me-3">${word.word}</h5>
+                                ${word.phonetic ? `<span class="badge bg-light text-dark">${word.phonetic}</span>` : ''}
+                            </div>
+                            <p class="mb-1 text-primary">${word.chinese_meaning}</p>
+                            ${word.english_meaning ? `<p class="mb-1 text-muted small">${word.english_meaning}</p>` : ''}
+                            ${word.example_sentence ? `<p class="mb-1 fst-italic small">"${word.example_sentence}"</p>` : ''}
+                            ${(word.synonyms && word.synonyms.length > 0) || (word.antonyms && word.antonyms.length > 0) ? `
+                                <div class="mt-2">
+                                    ${word.synonyms && word.synonyms.length > 0 ? `
+                                        <span class="me-3">
+                                            <small class="text-success">同義詞: ${word.synonyms.join(', ')}</small>
+                                        </span>
+                                    ` : ''}
+                                    ${word.antonyms && word.antonyms.length > 0 ? `
+                                        <span>
+                                            <small class="text-danger">反義詞: ${word.antonyms.join(', ')}</small>
+                                        </span>
+                                    ` : ''}
+                                </div>
+                            ` : ''}
+                        </div>
+                        <div class="text-end">
+                            <small class="text-muted d-block">${word.created_date}</small>
+                            <div class="btn-group btn-group-sm mt-1" role="group">
+                                <a href="/word/${word.id}" class="btn btn-outline-primary btn-sm">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="/edit/${word.id}" class="btn btn-outline-secondary btn-sm">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        resultsHtml += '</div>';
+        wordListContainer.innerHTML = resultsHtml;
+    }
+
+    function showSearchStatus(message, type) {
+        const alertClass = type === 'success' ? 'alert-success' :
+                          type === 'danger' ? 'alert-danger' :
+                          type === 'warning' ? 'alert-warning' : 'alert-info';
+
+        const iconClass = type === 'success' ? 'bi-check-circle' :
+                         type === 'danger' ? 'bi-exclamation-triangle' :
+                         type === 'warning' ? 'bi-exclamation-triangle' : 'bi-info-circle';
+
+        searchStatus.innerHTML = `
+            <div class="alert ${alertClass} alert-dismissible fade show mb-3" role="alert">
+                <i class="bi ${iconClass}"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `;
+        searchStatus.style.display = 'block';
+
+        // 3秒後自動隱藏資訊訊息
+        if (type === 'info') {
+            setTimeout(() => {
+                const alert = searchStatus.querySelector('.alert');
+                if (alert) {
+                    alert.remove();
+                }
+            }, 3000);
+        }
+    }
+
+    function clearSearch() {
+        searchInput.value = '';
+        clearSearchBtn.style.display = 'none';
+        searchStatus.style.display = 'none';
+        isSearchMode = false;
+
+        // 重新載入頁面以顯示所有單字
+        window.location.reload();
+    }
+
+    // 全域函數供其他地方使用
+    window.clearSearch = clearSearch;
 });
 
 // 快速儲存功能
