@@ -9,6 +9,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- 主題系統 CSS -->
+    <link href="{{ url_for('static', filename='css/themes.css') }}" rel="stylesheet">
 
     <style>
         .navbar-brand {
@@ -86,6 +88,31 @@
                 </ul>
 
                 <ul class="navbar-nav">
+                    <!-- 主題切換器 -->
+                    <li class="nav-item dropdown me-2">
+                        <a class="nav-link dropdown-toggle theme-selector" href="#" role="button" data-bs-toggle="dropdown" id="themeSelector">
+                            <i class="bi bi-palette"></i> <span class="d-none d-md-inline">主題</span>
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item theme-option d-flex align-items-center" href="#" data-theme="orange">
+                                <div class="theme-color-preview orange me-2"></div>
+                                <span>橘色主題</span>
+                            </a></li>
+                            <li><a class="dropdown-item theme-option d-flex align-items-center" href="#" data-theme="blue">
+                                <div class="theme-color-preview blue me-2"></div>
+                                <span>藍色主題</span>
+                            </a></li>
+                            <li><a class="dropdown-item theme-option d-flex align-items-center" href="#" data-theme="green">
+                                <div class="theme-color-preview green me-2"></div>
+                                <span>綠色主題</span>
+                            </a></li>
+                            <li><a class="dropdown-item theme-option d-flex align-items-center" href="#" data-theme="gray">
+                                <div class="theme-color-preview gray me-2"></div>
+                                <span>灰色主題</span>
+                            </a></li>
+                        </ul>
+                    </li>
+
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                             <i class="bi bi-gear"></i> 設定
@@ -133,6 +160,99 @@
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- 主題切換 JavaScript -->
+    <script>
+        // 主題切換功能
+        document.addEventListener('DOMContentLoaded', function() {
+            const themeOptions = document.querySelectorAll('[data-theme]');
+            const body = document.body;
+
+            // 主題名稱映射
+            const themeNames = {
+                'orange': '橘色主題',
+                'blue': '藍色主題',
+                'green': '綠色主題',
+                'gray': '灰色主題'
+            };
+
+            // 載入儲存的主題，預設為橘色
+            const savedTheme = localStorage.getItem('vocabulary-theme') || 'orange';
+            applyTheme(savedTheme);
+
+            // 主題切換事件監聽
+            themeOptions.forEach(option => {
+                option.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const theme = this.getAttribute('data-theme');
+                    applyTheme(theme);
+                    localStorage.setItem('vocabulary-theme', theme);
+
+                    // 顯示切換成功提示
+                    showThemeChangeNotification(themeNames[theme]);
+                });
+            });
+
+            function applyTheme(theme) {
+                // 移除所有主題類別
+                body.removeAttribute('data-theme');
+
+                // 應用新主題（橘色是預設，不需要data-theme屬性）
+                if (theme !== 'orange') {
+                    body.setAttribute('data-theme', theme);
+                }
+
+                // 更新主題選擇器顯示
+                updateThemeSelector(theme);
+            }
+
+            function updateThemeSelector(currentTheme) {
+                const selector = document.getElementById('themeSelector');
+
+                // 更新選擇器內容，不顯示圓圈預覽
+                selector.innerHTML = `
+                    <i class="bi bi-palette"></i>
+                    <span class="d-none d-md-inline">${themeNames[currentTheme]}</span>
+                `;
+
+                // 更新下拉選單中的選中狀態
+                themeOptions.forEach(option => {
+                    const parent = option.parentElement;
+                    if (option.getAttribute('data-theme') === currentTheme) {
+                        parent.classList.add('active');
+                        // 檢查是否已經有勾選圖示
+                        if (!option.innerHTML.includes('bi-check')) {
+                            option.innerHTML = option.innerHTML + ' <i class="bi bi-check float-end"></i>';
+                        }
+                    } else {
+                        parent.classList.remove('active');
+                        option.innerHTML = option.innerHTML.replace(' <i class="bi bi-check float-end"></i>', '');
+                    }
+                });
+            }
+
+            function showThemeChangeNotification(themeName) {
+                // 創建通知元素
+                const notification = document.createElement('div');
+                notification.className = 'alert alert-success alert-dismissible fade show position-fixed';
+                notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 250px;';
+                notification.innerHTML = `
+                    <i class="bi bi-palette"></i>
+                    已切換至 ${themeName}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                `;
+
+                document.body.appendChild(notification);
+
+                // 3秒後自動移除
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.remove();
+                    }
+                }, 3000);
+            }
+        });
+    </script>
 
     {% block extra_js %}{% endblock %}
 </body>

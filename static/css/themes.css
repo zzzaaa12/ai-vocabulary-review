@@ -1,0 +1,225 @@
+/* 主題色彩系統 */
+
+/* CSS 變數定義 */
+:root {
+  /* 橘色主題 (預設) */
+  --theme-primary: #fd7e14;
+  --theme-primary-rgb: 253, 126, 20;
+  --theme-primary-dark: #e8590c;
+  --theme-primary-light: #ffa94d;
+  --theme-secondary: #6c757d;
+  --theme-success: #198754;
+  --theme-info: #0dcaf0;
+  --theme-warning: #ffc107;
+  --theme-danger: #dc3545;
+
+  /* 漸變色 */
+  --theme-gradient: linear-gradient(135deg, #fd7e14 0%, #ffa94d 100%);
+  --theme-gradient-light: linear-gradient(135deg, #fff5f0 0%, #ffffff 100%);
+
+  /* 陰影色 */
+  --theme-shadow: rgba(253, 126, 20, 0.1);
+  --theme-shadow-hover: rgba(253, 126, 20, 0.2);
+
+  /* 邊框色 */
+  --theme-border: rgba(253, 126, 20, 0.2);
+  --theme-border-light: rgba(253, 126, 20, 0.1);
+}
+
+/* 藍色主題 */
+[data-theme="blue"] {
+  --theme-primary: #0d6efd;
+  --theme-primary-rgb: 13, 110, 253;
+  --theme-primary-dark: #0b5ed7;
+  --theme-primary-light: #6ea8fe;
+  --theme-gradient: linear-gradient(135deg, #0d6efd 0%, #6ea8fe 100%);
+  --theme-gradient-light: linear-gradient(135deg, #f0f7ff 0%, #ffffff 100%);
+  --theme-shadow: rgba(13, 110, 253, 0.1);
+  --theme-shadow-hover: rgba(13, 110, 253, 0.2);
+  --theme-border: rgba(13, 110, 253, 0.2);
+  --theme-border-light: rgba(13, 110, 253, 0.1);
+}
+
+/* 綠色主題 */
+[data-theme="green"] {
+  --theme-primary: #198754;
+  --theme-primary-rgb: 25, 135, 84;
+  --theme-primary-dark: #146c43;
+  --theme-primary-light: #75b798;
+  --theme-gradient: linear-gradient(135deg, #198754 0%, #75b798 100%);
+  --theme-gradient-light: linear-gradient(135deg, #f0fff4 0%, #ffffff 100%);
+  --theme-shadow: rgba(25, 135, 84, 0.1);
+  --theme-shadow-hover: rgba(25, 135, 84, 0.2);
+  --theme-border: rgba(25, 135, 84, 0.2);
+  --theme-border-light: rgba(25, 135, 84, 0.1);
+}
+
+/* 灰色主題 */
+[data-theme="gray"] {
+  --theme-primary: #6c757d;
+  --theme-primary-rgb: 108, 117, 125;
+  --theme-primary-dark: #5c636a;
+  --theme-primary-light: #adb5bd;
+  --theme-gradient: linear-gradient(135deg, #6c757d 0%, #adb5bd 100%);
+  --theme-gradient-light: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+  --theme-shadow: rgba(108, 117, 125, 0.1);
+  --theme-shadow-hover: rgba(108, 117, 125, 0.2);
+  --theme-border: rgba(108, 117, 125, 0.2);
+  --theme-border-light: rgba(108, 117, 125, 0.1);
+}
+
+/* 主題應用 */
+
+/* 導航列 */
+.navbar-dark.bg-primary {
+  background-color: var(--theme-primary) !important;
+}
+
+/* 按鈕 */
+.btn-primary {
+  background-color: var(--theme-primary);
+  border-color: var(--theme-primary);
+}
+
+.btn-primary:hover {
+  background-color: var(--theme-primary-dark);
+  border-color: var(--theme-primary-dark);
+}
+
+.btn-outline-primary {
+  color: var(--theme-primary);
+  border-color: var(--theme-primary);
+}
+
+.btn-outline-primary:hover {
+  background-color: var(--theme-primary);
+  border-color: var(--theme-primary);
+}
+
+/* 徽章 */
+.badge.bg-primary {
+  background-color: var(--theme-primary) !important;
+}
+
+/* 文字色彩 */
+.text-primary {
+  color: var(--theme-primary) !important;
+}
+
+/* 進度條 */
+.progress-bar.bg-success {
+  background-color: var(--theme-primary) !important;
+}
+
+/* 邊框 */
+.border-primary {
+  border-color: var(--theme-primary) !important;
+}
+
+/* 快速搜尋容器 */
+.quick-search-container:hover {
+  border-color: var(--theme-primary);
+  box-shadow: 0 4px 12px var(--theme-shadow-hover);
+}
+
+.quick-search-container .input-group-lg .form-control:focus {
+  border-color: var(--theme-primary);
+  box-shadow: 0 0 0 0.2rem rgba(var(--theme-primary-rgb), 0.25);
+}
+
+.quick-search-container .btn-primary {
+  border-color: var(--theme-primary);
+}
+
+.quick-search-container {
+  background: var(--theme-gradient-light);
+}
+
+/* 卡片懸停效果 */
+.card:hover {
+  box-shadow: 0 4px 12px var(--theme-shadow);
+}
+
+/* 統計數字顏色 */
+.h5.text-success {
+  color: var(--theme-primary) !important;
+}
+
+.h5.text-info {
+  color: var(--theme-primary-light) !important;
+}
+
+.h5.text-warning {
+  color: var(--theme-warning) !important;
+}
+
+.h5.text-primary {
+  color: var(--theme-primary-dark) !important;
+}
+
+/* 進度環 */
+.progress-ring circle:last-child {
+  stroke: var(--theme-primary);
+}
+
+/* 快速篩選按鈕 */
+.btn-sm.btn-primary {
+  background-color: var(--theme-primary);
+  border-color: var(--theme-primary);
+}
+
+.btn-sm.btn-outline-primary {
+  color: var(--theme-primary);
+  border-color: var(--theme-primary);
+}
+
+.btn-sm.btn-outline-primary:hover {
+  background-color: var(--theme-primary);
+  border-color: var(--theme-primary);
+}
+
+/* 主題切換器樣式 */
+.theme-selector {
+  min-width: 120px;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.theme-selector .d-flex {
+  align-items: center;
+  gap: 4px;
+}
+
+.theme-option {
+  justify-content: space-between;
+}
+
+.theme-color-preview {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.1);
+  flex-shrink: 0; /* 防止圓圈被壓縮 */
+}
+
+.theme-color-preview.orange { background-color: #fd7e14; }
+.theme-color-preview.blue { background-color: #0d6efd; }
+.theme-color-preview.green { background-color: #198754; }
+.theme-color-preview.gray { background-color: #6c757d; }
+
+/* 主題切換動畫 */
+* {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* 響應式調整 */
+@media (max-width: 768px) {
+  .theme-selector {
+    min-width: 100px;
+  }
+
+  .theme-option span {
+    display: none;
+  }
+}
