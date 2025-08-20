@@ -59,6 +59,58 @@
 .quick-search-container .text-muted {
     font-size: 0.95rem;
 }
+
+/* 進度環樣式 */
+.progress-ring circle {
+    transition: stroke-dashoffset 0.5s ease-in-out;
+}
+
+/* 學習統計卡片動畫 */
+.card-body .h5 {
+    transition: all 0.3s ease;
+}
+
+.card-body .h5:hover {
+    transform: scale(1.1);
+}
+
+/* 快速篩選標籤動畫 */
+.btn-sm {
+    transition: all 0.2s ease;
+}
+
+.btn-sm:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* 單字列表容器過渡效果 */
+#wordListContainer {
+    transition: opacity 0.3s ease;
+}
+
+/* 載入指示器動畫 */
+#loadingIndicator {
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 統計卡片懸停效果 */
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+}
 </style>
 {% endblock %}
 
@@ -111,19 +163,20 @@
                     <div class="dropdown">
                         <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
                             <i class="bi bi-funnel"></i>
-                            {% if time_filter == 'all' %}全部
-                            {% elif time_filter == 'recent_2_days' %}近二日
-                            {% elif time_filter == 'recent_week' %}近一週
-                            {% elif time_filter == 'recent_2_weeks' %}近兩週
-                            {% elif time_filter == 'recent_month' %}近一個月
-                            {% else %}全部{% endif %}
+                            {{ current_filter_label }}
+                            <span class="badge bg-primary ms-1">{{ filtered_count }}</span>
                         </button>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item {% if time_filter == 'all' %}active{% endif %}" href="{{ url_for('index', time_filter='all') }}">全部</a></li>
-                            <li><a class="dropdown-item {% if time_filter == 'recent_2_days' %}active{% endif %}" href="{{ url_for('index', time_filter='recent_2_days') }}">近二日</a></li>
-                            <li><a class="dropdown-item {% if time_filter == 'recent_week' %}active{% endif %}" href="{{ url_for('index', time_filter='recent_week') }}">近一週</a></li>
-                            <li><a class="dropdown-item {% if time_filter == 'recent_2_weeks' %}active{% endif %}" href="{{ url_for('index', time_filter='recent_2_weeks') }}">近兩週</a></li>
-                            <li><a class="dropdown-item {% if time_filter == 'recent_month' %}active{% endif %}" href="{{ url_for('index', time_filter='recent_month') }}">近一個月</a></li>
+                            {% for filter_key, filter_label in time_filters.items() %}
+                            <li>
+                                <a class="dropdown-item {% if time_filter == filter_key %}active{% endif %}"
+                                   href="{{ url_for('index', time_filter=filter_key) }}">
+                                    <i class="bi {% if filter_key == 'all' %}bi-collection{% elif filter_key == 'recent_3_days' %}bi-clock{% elif filter_key == 'recent_week' %}bi-calendar-week{% elif filter_key == 'recent_2_weeks' %}bi-calendar2-week{% elif filter_key == 'recent_month' %}bi-calendar-month{% elif filter_key == 'recent_3_months' %}bi-calendar3{% endif %}"></i>
+                                    {{ filter_label }}
+                                    <span class="badge bg-light text-dark ms-2">{{ time_stats.get(filter_key, 0) }}</span>
+                                </a>
+                            </li>
+                            {% endfor %}
                         </ul>
                     </div>
                 </div>
@@ -131,6 +184,37 @@
             <div class="card-body">
                 <!-- 搜尋狀態顯示 -->
                 <div id="searchStatus" style="display: none;"></div>
+
+                <!-- 快速篩選標籤 -->
+                <div class="mb-3">
+                    <div class="d-flex flex-wrap gap-2">
+                        {% set shortcuts = ['Ctrl+1', 'Ctrl+2', 'Ctrl+3', 'Ctrl+4', 'Ctrl+5', 'Ctrl+6'] %}
+                        {% for filter_key, filter_label in time_filters.items() %}
+                        <a href="{{ url_for('index', time_filter=filter_key) }}"
+                           class="btn btn-sm {% if time_filter == filter_key %}btn-primary{% else %}btn-outline-primary{% endif %}"
+                           data-bs-toggle="tooltip"
+                           data-bs-placement="top"
+                           title="快捷鍵: {{ shortcuts[loop.index0] }}">
+                            {{ filter_label }}
+                            <span class="badge {% if time_filter == filter_key %}bg-light text-dark{% else %}bg-primary{% endif %} ms-1">
+                                {{ time_stats.get(filter_key, 0) }}
+                            </span>
+                        </a>
+                        {% endfor %}
+                    </div>
+                    <div class="text-muted small mt-2">
+                        <i class="bi bi-info-circle"></i>
+                        提示：使用 Ctrl+1~6 快速切換時間篩選
+                    </div>
+                </div>
+
+                <!-- 載入狀態 -->
+                <div id="loadingIndicator" style="display: none;" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">載入中...</span>
+                    </div>
+                    <div class="mt-2 text-muted">正在載入單字...</div>
+                </div>
 
                 <!-- 單字列表容器 -->
                 <div id="wordListContainer">
@@ -203,19 +287,96 @@
         <div class="card mb-4">
             <div class="card-header">
                 <h6 class="card-title mb-0">
-                    <i class="bi bi-bar-chart"></i> 學習統計
+                    <i class="bi bi-graph-up"></i> 學習統計
                 </h6>
             </div>
             <div class="card-body">
                 <div class="row text-center">
-                    <div class="col-6">
-                        <h4 class="text-primary">{{ total_words }}</h4>
-                        <small class="text-muted">總單字數</small>
+                    <div class="col-6 mb-2">
+                        <div class="h5 text-success">{{ time_stats.get('recent_3_days', 0) }}</div>
+                        <small class="text-muted">近三天</small>
                     </div>
-                    <div class="col-6">
-                        <h4 class="text-success">0</h4>
-                        <small class="text-muted">本週新增</small>
+                    <div class="col-6 mb-2">
+                        <div class="h5 text-info">{{ time_stats.get('recent_week', 0) }}</div>
+                        <small class="text-muted">近一週</small>
                     </div>
+                    <div class="col-6 mb-2">
+                        <div class="h5 text-warning">{{ time_stats.get('recent_month', 0) }}</div>
+                        <small class="text-muted">近一個月</small>
+                    </div>
+                    <div class="col-6 mb-2">
+                        <div class="h5 text-primary">{{ time_stats.get('all', 0) }}</div>
+                        <small class="text-muted">總計</small>
+                    </div>
+                </div>
+
+                <!-- 學習進度條 -->
+                <div class="mt-3">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <small class="text-muted">本月進度</small>
+                        <small class="text-muted">{{ time_stats.get('recent_month', 0) }}/{{ time_stats.get('all', 0) }}</small>
+                    </div>
+                    <div class="progress" style="height: 6px;">
+                        <div class="progress-bar bg-success" role="progressbar"
+                             style="width: {% if time_stats.get('all', 0) > 0 %}{{ (time_stats.get('recent_month', 0) / time_stats.get('all', 0) * 100)|round(1) }}{% else %}0{% endif %}%">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-activity"></i> 學習趨勢
+                </h6>
+            </div>
+            <div class="card-body">
+                <!-- 時間範圍比較 -->
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="small text-muted">近三天 vs 上三天</span>
+                        <span class="badge bg-{% if time_stats.get('recent_3_days', 0) > 0 %}success{% else %}secondary{% endif %}">
+                            {% if time_stats.get('recent_3_days', 0) > 0 %}+{{ time_stats.get('recent_3_days', 0) }}{% else %}0{% endif %}
+                        </span>
+                    </div>
+                    <div class="progress mb-2" style="height: 4px;">
+                        <div class="progress-bar bg-success" role="progressbar"
+                             style="width: {% if time_stats.get('recent_week', 0) > 0 %}{{ (time_stats.get('recent_3_days', 0) / time_stats.get('recent_week', 0) * 100)|round(1) }}{% else %}0{% endif %}%">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 學習建議 -->
+                <div class="alert alert-light p-2 mb-3">
+                    <small class="text-muted">
+                        <i class="bi bi-lightbulb"></i>
+                        {% if time_stats.get('recent_3_days', 0) == 0 %}
+                            今天還沒有新增單字，開始學習吧！
+                        {% elif time_stats.get('recent_3_days', 0) < 3 %}
+                            保持學習節奏，每天學習效果更好！
+                        {% else %}
+                            學習進度很棒，繼續保持！
+                        {% endif %}
+                    </small>
+                </div>
+
+                <!-- 學習目標 -->
+                <div class="text-center">
+                    <div class="small text-muted mb-1">本月目標進度</div>
+                    <div class="position-relative d-inline-block">
+                        <svg width="60" height="60" class="progress-ring">
+                            <circle cx="30" cy="30" r="25" fill="transparent" stroke="#e9ecef" stroke-width="4"/>
+                            <circle cx="30" cy="30" r="25" fill="transparent" stroke="#28a745" stroke-width="4"
+                                    stroke-dasharray="157"
+                                    stroke-dashoffset="{{ 157 - (157 * (time_stats.get('recent_month', 0) / 30 if time_stats.get('recent_month', 0) < 30 else 1)) }}"
+                                    transform="rotate(-90 30 30)"/>
+                        </svg>
+                        <div class="position-absolute top-50 start-50 translate-middle">
+                            <small class="fw-bold">{{ ((time_stats.get('recent_month', 0) / 30 * 100) if time_stats.get('recent_month', 0) < 30 else 100)|round(0)|int }}%</small>
+                        </div>
+                    </div>
+                    <div class="small text-muted">{{ time_stats.get('recent_month', 0) }}/30 單字</div>
                 </div>
             </div>
         </div>
@@ -621,6 +782,86 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 全域函數供其他地方使用
     window.clearSearch = clearSearch;
+});
+
+// 時間篩選功能
+document.addEventListener('DOMContentLoaded', function() {
+    // 時間篩選按鈕點擊效果
+    const filterButtons = document.querySelectorAll('.btn-sm[href*="time_filter"]');
+
+    filterButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            // 顯示載入指示器
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            const wordListContainer = document.getElementById('wordListContainer');
+
+            if (loadingIndicator && wordListContainer) {
+                loadingIndicator.style.display = 'block';
+                wordListContainer.style.opacity = '0.5';
+            }
+
+            // 添加載入效果到按鈕
+            const originalText = this.innerHTML;
+            this.innerHTML = '<i class="bi bi-hourglass-split"></i> 載入中...';
+            this.classList.add('disabled');
+
+            // 延遲一下讓使用者看到載入效果
+            setTimeout(() => {
+                window.location.href = this.href;
+            }, 300);
+        });
+    });
+
+    // 統計資料動態更新
+    function updateStats() {
+        fetch('/api/stats')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 更新統計數字（如果需要的話）
+                    console.log('統計資料已更新:', data.data);
+                }
+            })
+            .catch(error => {
+                console.error('更新統計資料失敗:', error);
+            });
+    }
+
+    // 每30秒更新一次統計資料（可選）
+    // setInterval(updateStats, 30000);
+
+    // URL狀態管理
+    function updateURL(timeFilter) {
+        const url = new URL(window.location);
+        if (timeFilter === 'all') {
+            url.searchParams.delete('time_filter');
+        } else {
+            url.searchParams.set('time_filter', timeFilter);
+        }
+        window.history.pushState({}, '', url);
+    }
+
+    // 鍵盤快捷鍵支援
+    document.addEventListener('keydown', function(e) {
+        // Ctrl/Cmd + 數字鍵快速切換時間篩選
+        if ((e.ctrlKey || e.metaKey) && e.key >= '1' && e.key <= '6') {
+            e.preventDefault();
+            const filters = ['recent_3_days', 'recent_week', 'recent_2_weeks', 'recent_month', 'recent_3_months', 'all'];
+            const filterIndex = parseInt(e.key) - 1;
+            if (filterIndex < filters.length) {
+                const filterButton = document.querySelector(`a[href*="time_filter=${filters[filterIndex]}"]`);
+                if (filterButton) {
+                    filterButton.click();
+                }
+            }
+        }
+    });
+
+    // 工具提示初始化
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
 });
 
 // 快速儲存功能

@@ -15,7 +15,7 @@ graph TB
     C --> D[業務邏輯層]
     D --> E[資料存取層]
     E --> F[JSON資料檔案]
-    
+
     C --> G[模板引擎 Jinja2]
     G --> H[HTML模板]
     H --> A
@@ -121,6 +121,30 @@ vocabulary_notebook/
 | POST | /edit/<id> | 處理編輯單字請求 | 表單資料 |
 | POST | /delete/<id> | 刪除單字 | - |
 | GET | /search | 搜尋單字 | q (查詢字串) |
+| GET | /api/stats | 取得時間分類統計資料 | - |
+
+### 5. 時間分類功能詳細設計
+
+#### 5.1 時間篩選服務方法
+
+```python
+class VocabularyService:
+    def get_words_by_time_filter(self, time_filter: str) -> List[Word]:
+        """根據時間篩選條件取得單字列表"""
+
+    def get_time_filter_stats(self) -> Dict[str, int]:
+        """取得各時間範圍的單字統計數量"""
+
+    def get_words_by_date_range(self, start_date: datetime, end_date: datetime) -> List[Word]:
+        """取得指定日期範圍內的單字"""
+```
+
+#### 5.2 前端時間分類介面設計
+
+- **下拉選單**: 主要的時間篩選選擇器
+- **快速篩選標籤**: 水平排列的快速選擇按鈕
+- **統計資訊卡片**: 顯示各時間範圍的單字數量
+- **學習進度圖表**: 視覺化顯示學習趨勢（可選）
 
 ## 資料模型
 
@@ -145,10 +169,21 @@ class Word:
 
 ```python
 TIME_FILTERS = {
-    'recent_2_days': 2,
+    'recent_3_days': 3,
     'recent_week': 7,
     'recent_2_weeks': 14,
-    'recent_month': 30
+    'recent_month': 30,
+    'recent_3_months': 90,
+    'all': None  # 顯示全部
+}
+
+TIME_FILTER_LABELS = {
+    'recent_3_days': '近三天',
+    'recent_week': '近一週',
+    'recent_2_weeks': '近兩週',
+    'recent_month': '近一個月',
+    'recent_3_months': '近三個月',
+    'all': '全部'
 }
 ```
 

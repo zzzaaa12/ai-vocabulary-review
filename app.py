@@ -55,25 +55,39 @@ def register_routes(app):
 
         try:
             # Get words based on time filter
-            if time_filter == 'all':
-                words = app.vocabulary_service.get_all_words()
-            else:
-                words = app.vocabulary_service.get_words_by_time_filter(time_filter)
+            words = app.vocabulary_service.get_words_by_time_filter(time_filter)
 
-            # Sort by creation date (newest first)
-            words.sort(key=lambda w: w.created_date, reverse=True)
+            # Get time filter statistics
+            time_stats = app.vocabulary_service.get_time_filter_stats()
+
+            # Get all available time filters with labels
+            time_filters = app.vocabulary_service.get_all_time_filters()
+
+            # Get current filter label
+            current_filter_label = app.vocabulary_service.get_time_filter_label(time_filter)
+
+            # Get filtered count
+            filtered_count = len(words)
 
             total_words = app.vocabulary_service.get_total_word_count()
 
             return render_template('index.html',
                                  words=words,
                                  time_filter=time_filter,
+                                 time_filters=time_filters,
+                                 time_stats=time_stats,
+                                 current_filter_label=current_filter_label,
+                                 filtered_count=filtered_count,
                                  total_words=total_words)
         except Exception as e:
             flash(f'載入單字時發生錯誤：{str(e)}', 'error')
             return render_template('index.html',
                                  words=[],
                                  time_filter=time_filter,
+                                 time_filters={},
+                                 time_stats={},
+                                 current_filter_label='全部',
+                                 filtered_count=0,
                                  total_words=0)
 
     @app.route('/word/<word_id>')
@@ -521,6 +535,36 @@ def register_routes(app):
             return jsonify({
                 'success': False,
                 'message': f'AI 生成失敗: {str(e)}'
+            })
+
+    @app.route('/api/stats', methods=['GET'])
+    def get_stats():
+        """
+        Get vocabulary statistics.
+        """
+        try:
+            # Get time filter statistics
+            time_stats = app.vocabulary_service.get_time_filter_stats()
+
+            # Get learning progress statistics
+            progress_stats = app.vocabulary_service.get_learning_progress_stats()
+
+            # Get all available time filters
+            time_filters = app.vocabulary_service.get_all_time_filters()
+
+            return jsonify({
+                'success': True,
+                'data': {
+                    'time_stats': time_stats,
+                    'progress_stats': progress_stats,
+                    'time_filters': time_filters
+                }
+            })
+
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'message': f'獲取統計資料失敗: {str(e)}'
             })
 
     @app.errorhandler(404)
