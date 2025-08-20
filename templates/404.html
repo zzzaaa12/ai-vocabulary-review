@@ -3,10 +3,127 @@
 {% block title %}頁面不存在 - 英文單字筆記本{% endblock %}
 
 {% block content %}
-<div class="text-center py-5">
-    <h1 class="display-1">404</h1>
-    <h3 class="text-muted">頁面不存在</h3>
-    <p class="text-muted">抱歉，您要找的頁面不存在。</p>
-    <a href="{{ url_for('index') }}" class="btn btn-primary">回到首頁</a>
+<div class="container-fluid">
+    <div class="row justify-content-center align-items-center" style="min-height: 60vh;">
+        <div class="col-md-6 text-center">
+            <div class="error-page">
+                <!-- 404 圖示 -->
+                <div class="mb-4">
+                    <i class="bi bi-exclamation-triangle-fill text-warning" style="font-size: 5rem;"></i>
+                </div>
+
+                <!-- 錯誤標題 -->
+                <h1 class="display-1 fw-bold text-primary mb-3">404</h1>
+                <h2 class="h4 mb-3">頁面不存在</h2>
+
+                <!-- 錯誤說明 -->
+                <p class="text-muted mb-4">
+                    抱歉，您要尋找的頁面不存在或已被移除。<br>
+                    可能是網址輸入錯誤，或是頁面已經被刪除。
+                </p>
+
+                <!-- 建議操作 -->
+                <div class="mb-4">
+                    <h5>您可以嘗試：</h5>
+                    <ul class="list-unstyled text-muted">
+                        <li><i class="bi bi-check-circle text-success me-2"></i>檢查網址是否正確</li>
+                        <li><i class="bi bi-check-circle text-success me-2"></i>返回首頁重新開始</li>
+                        <li><i class="bi bi-check-circle text-success me-2"></i>使用搜尋功能尋找單字</li>
+                        <li><i class="bi bi-check-circle text-success me-2"></i>新增一個新的單字</li>
+                    </ul>
+                </div>
+
+                <!-- 操作按鈕 -->
+                <div class="d-flex flex-column flex-sm-row gap-3 justify-content-center">
+                    <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg">
+                        <i class="bi bi-house"></i> 返回首頁
+                    </a>
+                    <a href="{{ url_for('add_word') }}" class="btn btn-outline-success btn-lg">
+                        <i class="bi bi-plus-circle"></i> 新增單字
+                    </a>
+                </div>
+
+                <!-- 額外資訊 -->
+                <div class="mt-5 pt-4 border-top">
+                    <p class="text-muted small">
+                        如果您認為這是系統錯誤，請嘗試重新整理頁面。<br>
+                        問題持續發生時，請檢查網路連線或稍後再試。
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+
+<!-- 背景裝飾 -->
+<style>
+.error-page {
+    position: relative;
+    z-index: 1;
+}
+
+.error-page::before {
+    content: '';
+    position: absolute;
+    top: -50px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 200px;
+    height: 200px;
+    background: linear-gradient(135deg, rgba(13, 110, 253, 0.1) 0%, rgba(25, 135, 84, 0.1) 100%);
+    border-radius: 50%;
+    z-index: -1;
+}
+
+.btn-lg {
+    padding: 0.75rem 2rem;
+    font-size: 1.1rem;
+}
+
+@media (max-width: 576px) {
+    .display-1 {
+        font-size: 4rem;
+    }
+
+    .bi-exclamation-triangle-fill {
+        font-size: 3rem !important;
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 記錄 404 錯誤（可用於分析）
+console.log('404 Error: Page not found -', window.location.href);
+
+// 自動返回功能（可選）
+let countdown = 30;
+const countdownElement = document.createElement('p');
+countdownElement.className = 'text-muted small mt-3';
+countdownElement.innerHTML = `<i class="bi bi-clock"></i> ${countdown} 秒後自動返回首頁`;
+
+// 如果用戶想要自動返回功能，可以取消註解以下代碼
+/*
+document.querySelector('.error-page').appendChild(countdownElement);
+
+const countdownTimer = setInterval(() => {
+    countdown--;
+    countdownElement.innerHTML = `<i class="bi bi-clock"></i> ${countdown} 秒後自動返回首頁`;
+
+    if (countdown <= 0) {
+        clearInterval(countdownTimer);
+        window.location.href = '{{ url_for("index") }}';
+    }
+}, 1000);
+
+// 如果用戶點擊任何按鈕，取消自動返回
+document.querySelectorAll('.btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        clearInterval(countdownTimer);
+        countdownElement.remove();
+    });
+});
+*/
+</script>
 {% endblock %}
