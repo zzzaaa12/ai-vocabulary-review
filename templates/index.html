@@ -1,18 +1,89 @@
 {% extends "base.html" %}
 
+{% block extra_css %}
+<style>
+.quick-search-container {
+    border: 2px dashed #dee2e6;
+    border-radius: 12px;
+    padding: 20px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    transition: all 0.3s ease;
+}
+
+.quick-search-container:hover {
+    border-color: #0d6efd;
+    box-shadow: 0 4px 12px rgba(13, 110, 253, 0.1);
+}
+
+.quick-search-container .input-group-lg .form-control {
+    border-radius: 8px 0 0 8px;
+    border: 2px solid #dee2e6;
+    transition: border-color 0.3s ease;
+}
+
+.quick-search-container .input-group-lg .form-control:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+.quick-search-container .btn-primary {
+    border-radius: 0 8px 8px 0;
+    border: 2px solid #0d6efd;
+    border-left: none;
+    padding: 0.75rem 1.5rem;
+}
+
+#quickSearchStatus .alert {
+    margin-bottom: 0;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    border-radius: 6px;
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.quick-search-container h3 {
+    font-weight: 600;
+}
+
+.quick-search-container .text-muted {
+    font-size: 0.95rem;
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="row">
     <div class="col-12">
-        <div class="jumbotron bg-light p-5 rounded-3 mb-4">
-            <h1 class="display-4">
-                <i class="bi bi-book"></i> 英文單字筆記本
-            </h1>
-            <p class="lead">使用 AI 技術智慧管理你的英文單字學習</p>
-            <hr class="my-4">
-            <p>輸入單字，讓 AI 自動補齊中文翻譯、音標、例句、同義詞和反義詞。</p>
-            <a class="btn btn-primary btn-lg" href="{{ url_for('add_word') }}" role="button">
-                <i class="bi bi-plus-circle"></i> 開始新增單字
-            </a>
+        <div class="quick-search-container mb-4">
+            <div class="row align-items-center" style="min-height: 120px;">
+                <div class="col-md-4">
+                    <h3 class="text-primary mb-2">
+                        <i class="bi bi-magic"></i> AI 快速查詢
+                    </h3>
+                    <p class="text-muted mb-0">輸入英文單字，AI 立即生成完整資訊</p>
+                </div>
+                <div class="col-md-8">
+                    <div class="input-group input-group-lg mb-2">
+                        <input type="text" class="form-control" id="quickSearchWord" placeholder="輸入英文單字..." autocomplete="off">
+                        <button class="btn btn-primary" type="button" id="quickAiBtn">
+                            <i class="bi bi-robot"></i> AI 查詢
+                        </button>
+                    </div>
+                    <!-- 固定高度的狀態區域 -->
+                    <div id="quickSearchStatus" style="height: 40px; overflow: hidden;"></div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -151,4 +222,250 @@
         </div>
     </div>
 </div>
+
+<!-- 快速 AI 查詢結果 Modal -->
+<div class="modal fade" id="quickAiResultModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-magic"></i> AI 生成結果
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="quickAiResultContent">
+                    <!-- AI 生成的內容會在這裡顯示 -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <a href="{{ url_for('add_word') }}" class="btn btn-outline-primary">
+                    <i class="bi bi-pencil"></i> 手動編輯
+                </a>
+                <button type="button" class="btn btn-success" id="saveQuickResult" onclick="saveQuickAiResult()">
+                    <i class="bi bi-check-circle"></i> 新增並儲存
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 快速 AI 查詢功能
+document.addEventListener('DOMContentLoaded', function() {
+    const quickSearchWord = document.getElementById('quickSearchWord');
+    const quickAiBtn = document.getElementById('quickAiBtn');
+    const quickSearchStatus = document.getElementById('quickSearchStatus');
+
+    // 監聽輸入框
+    quickSearchWord.addEventListener('input', function() {
+        if (this.value.trim()) {
+            quickAiBtn.disabled = false;
+        } else {
+            quickAiBtn.disabled = true;
+        }
+    });
+
+    // 輸入框焦點效果
+    quickSearchWord.addEventListener('focus', function() {
+        document.querySelector('.quick-search-container').style.borderColor = '#0d6efd';
+        document.querySelector('.quick-search-container').style.boxShadow = '0 4px 12px rgba(13, 110, 253, 0.15)';
+    });
+
+    quickSearchWord.addEventListener('blur', function() {
+        document.querySelector('.quick-search-container').style.borderColor = '#dee2e6';
+        document.querySelector('.quick-search-container').style.boxShadow = 'none';
+    });
+
+    // 監聽 Enter 鍵
+    quickSearchWord.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter' && this.value.trim()) {
+            performQuickSearch();
+        }
+    });
+
+    // 監聽按鈕點擊
+    quickAiBtn.addEventListener('click', performQuickSearch);
+
+    function performQuickSearch() {
+        const word = quickSearchWord.value.trim();
+
+        if (!word) {
+            showQuickStatus('請輸入英文單字', 'warning');
+            return;
+        }
+
+        // 清除之前的狀態
+        clearQuickStatus();
+
+        // 顯示載入狀態
+        quickAiBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> 查詢中...';
+        quickAiBtn.disabled = true;
+        showQuickStatus('AI 正在生成單字資訊...', 'info');
+
+        // 呼叫 AI API
+        fetch('/api/generate-word-info', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                word: word,
+                provider: null
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 顯示 AI 生成結果
+                showQuickAiResult(data.data);
+                showQuickStatus('AI 生成完成！', 'success');
+            } else {
+                // 顯示錯誤訊息
+                showQuickStatus(data.message, 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('AI 生成錯誤:', error);
+            showQuickStatus('網路連線錯誤，請檢查網路連線後重試', 'danger');
+        })
+        .finally(() => {
+            // 恢復按鈕
+            quickAiBtn.innerHTML = '<i class="bi bi-robot"></i> AI 查詢';
+            quickAiBtn.disabled = false;
+        });
+    }
+
+    function showQuickStatus(message, type) {
+        const alertClass = type === 'success' ? 'alert-success' :
+                          type === 'danger' ? 'alert-danger' :
+                          type === 'warning' ? 'alert-warning' : 'alert-info';
+
+        const iconClass = type === 'success' ? 'bi-check-circle' :
+                         type === 'danger' ? 'bi-exclamation-triangle' :
+                         type === 'warning' ? 'bi-exclamation-triangle' : 'bi-info-circle';
+
+        quickSearchStatus.innerHTML = `
+            <div class="alert ${alertClass} fade show" role="alert">
+                <i class="bi ${iconClass}"></i>
+                <small>${message}</small>
+            </div>
+        `;
+
+        // 3秒後自動隱藏成功和資訊訊息
+        if (type === 'success' || type === 'info') {
+            setTimeout(() => {
+                quickSearchStatus.innerHTML = '';
+            }, 3000);
+        }
+    }
+
+    function clearQuickStatus() {
+        quickSearchStatus.innerHTML = '';
+    }
+
+    function showQuickAiResult(result) {
+        // 儲存結果到全域變數供 Modal 使用
+        window.currentQuickAiResult = result;
+
+        // 顯示 Modal
+        const modal = new bootstrap.Modal(document.getElementById('quickAiResultModal'));
+        modal.show();
+
+        // 填入 Modal 內容
+        document.getElementById('quickAiResultContent').innerHTML = `
+            <div class="alert alert-info mb-3">
+                <i class="bi bi-info-circle"></i>
+                <strong>AI 提供商:</strong> ${result.provider.toUpperCase()}
+                <span class="badge bg-primary ms-2">信心度: ${Math.round(result.confidence_score * 100)}%</span>
+            </div>
+            <div class="row">
+                <div class="col-12 mb-3">
+                    <label class="form-label"><strong>英文單字:</strong></label>
+                    <div class="form-control-plaintext border rounded p-2 bg-light">${result.word}</div>
+                </div>
+                <div class="col-12 mb-3">
+                    <label class="form-label"><strong>中文翻譯:</strong></label>
+                    <div class="form-control-plaintext border rounded p-2 bg-light">${result.chinese_meaning || '未提供'}</div>
+                </div>
+                <div class="col-12 mb-3">
+                    <label class="form-label"><strong>英文定義:</strong></label>
+                    <div class="form-control-plaintext border rounded p-2 bg-light">${result.english_meaning || '未提供'}</div>
+                </div>
+                <div class="col-6 mb-3">
+                    <label class="form-label"><strong>音標:</strong></label>
+                    <div class="form-control-plaintext border rounded p-2 bg-light">${result.phonetic || '未提供'}</div>
+                </div>
+                <div class="col-6 mb-3">
+                    <label class="form-label"><strong>例句:</strong></label>
+                    <div class="form-control-plaintext border rounded p-2 bg-light">${result.example_sentence || '未提供'}</div>
+                </div>
+                <div class="col-6 mb-3">
+                    <label class="form-label"><strong>同義詞:</strong></label>
+                    <div class="form-control-plaintext border rounded p-2 bg-light">${result.synonyms || '未提供'}</div>
+                </div>
+                <div class="col-6 mb-3">
+                    <label class="form-label"><strong>反義詞:</strong></label>
+                    <div class="form-control-plaintext border rounded p-2 bg-light">${result.antonyms || '未提供'}</div>
+                </div>
+            </div>
+        `;
+    }
+});
+
+// 快速儲存功能
+function saveQuickAiResult() {
+    if (!window.currentQuickAiResult) {
+        alert('沒有可儲存的資料');
+        return;
+    }
+
+    const result = window.currentQuickAiResult;
+    const saveBtn = document.getElementById('saveQuickResult');
+
+    // 顯示載入狀態
+    saveBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> 儲存中...';
+    saveBtn.disabled = true;
+
+    // 準備表單資料
+    const formData = new FormData();
+    formData.append('word', result.word);
+    formData.append('chinese_meaning', result.chinese_meaning || '');
+    formData.append('english_meaning', result.english_meaning || '');
+    formData.append('phonetic', result.phonetic || '');
+    formData.append('example_sentence', result.example_sentence || '');
+    formData.append('synonyms', result.synonyms || '');
+    formData.append('antonyms', result.antonyms || '');
+
+    // 提交到新增單字 API
+    fetch('/add', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if (response.ok) {
+            // 關閉 Modal
+            bootstrap.Modal.getInstance(document.getElementById('quickAiResultModal')).hide();
+
+            // 顯示成功訊息並重新載入頁面
+            alert('單字儲存成功！');
+            window.location.reload();
+        } else {
+            throw new Error('儲存失敗');
+        }
+    })
+    .catch(error => {
+        console.error('儲存錯誤:', error);
+        alert('儲存失敗，請重試');
+    })
+    .finally(() => {
+        // 恢復按鈕
+        saveBtn.innerHTML = '<i class="bi bi-check-circle"></i> 新增並儲存';
+        saveBtn.disabled = false;
+    });
+}
+</script>
 {% endblock %}

@@ -162,8 +162,11 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                <button type="button" class="btn btn-primary" id="acceptAiResult">
-                    <i class="bi bi-check-circle"></i> 接受並填入
+                <button type="button" class="btn btn-outline-primary" id="acceptAiResult">
+                    <i class="bi bi-pencil"></i> 填入表單編輯
+                </button>
+                <button type="button" class="btn btn-success" id="saveAiResult">
+                    <i class="bi bi-check-circle"></i> 新增並儲存
                 </button>
             </div>
         </div>
@@ -352,6 +355,7 @@ function showErrorMessage(message) {
 }
 
 // 接受 AI 結果
+// 接受 AI 結果（填入表單）
 document.getElementById('acceptAiResult').addEventListener('click', function() {
     if (window.currentAiResult) {
         const result = window.currentAiResult;
@@ -378,6 +382,58 @@ document.getElementById('acceptAiResult').addEventListener('click', function() {
 
         document.querySelector('.container.mt-4').insertBefore(alert, document.querySelector('.row'));
     }
+});
+
+// 直接儲存 AI 結果
+document.getElementById('saveAiResult').addEventListener('click', function() {
+    if (!window.currentAiResult) {
+        alert('沒有可儲存的資料');
+        return;
+    }
+
+    const result = window.currentAiResult;
+    const saveBtn = this;
+
+    // 顯示載入狀態
+    saveBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> 儲存中...';
+    saveBtn.disabled = true;
+
+    // 準備表單資料
+    const formData = new FormData();
+    formData.append('word', document.getElementById('word').value);
+    formData.append('chinese_meaning', result.chinese_meaning || '');
+    formData.append('english_meaning', result.english_meaning || '');
+    formData.append('phonetic', result.phonetic || '');
+    formData.append('example_sentence', result.example_sentence || '');
+    formData.append('synonyms', result.synonyms || '');
+    formData.append('antonyms', result.antonyms || '');
+
+    // 提交到新增單字 API
+    fetch('/add', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if (response.ok) {
+            // 關閉 Modal
+            bootstrap.Modal.getInstance(document.getElementById('aiResultModal')).hide();
+
+            // 顯示成功訊息並跳轉到首頁
+            alert('單字儲存成功！');
+            window.location.href = '/';
+        } else {
+            throw new Error('儲存失敗');
+        }
+    })
+    .catch(error => {
+        console.error('儲存錯誤:', error);
+        alert('儲存失敗，請重試');
+    })
+    .finally(() => {
+        // 恢復按鈕
+        saveBtn.innerHTML = '<i class="bi bi-check-circle"></i> 新增並儲存';
+        saveBtn.disabled = false;
+    });
 });
 
 // 表單提交處理
