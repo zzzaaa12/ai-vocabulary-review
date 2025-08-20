@@ -234,9 +234,9 @@
                     <a href="{{ url_for('api_settings') }}" class="btn btn-outline-primary">
                         <i class="bi bi-robot"></i> 設定 AI
                     </a>
-                    <button class="btn btn-outline-secondary" disabled>
+                    <a href="{{ url_for('random_review') }}" class="btn btn-outline-secondary" {% if total_words == 0 %}disabled{% endif %}>
                         <i class="bi bi-shuffle"></i> 隨機複習
-                    </button>
+                    </a>
                 </div>
             </div>
         </div>

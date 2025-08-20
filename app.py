@@ -256,6 +256,43 @@ def register_routes(app):
 
         return redirect(url_for('index'))
 
+    @app.route('/review')
+    def random_review():
+        """
+        Random vocabulary review page.
+        """
+        try:
+            words = app.vocabulary_service.get_all_words()
+
+            if not words:
+                flash('沒有單字可以複習，請先新增一些單字', 'info')
+                return redirect(url_for('add_word'))
+
+            # Convert words to dictionary format for JSON serialization
+            words_data = []
+            for word in words:
+                words_data.append({
+                    'id': word.id,
+                    'word': word.word,
+                    'chinese_meaning': word.chinese_meaning,
+                    'english_meaning': word.english_meaning,
+                    'phonetic': word.phonetic,
+                    'example_sentence': word.example_sentence,
+                    'synonyms': word.synonyms,
+                    'antonyms': word.antonyms,
+                    'created_date': word.created_date.strftime('%Y-%m-%d')
+                })
+
+            # Shuffle words for random review
+            import random
+            random.shuffle(words_data)
+
+            return render_template('review.html', words=words_data, total_words=len(words_data))
+
+        except Exception as e:
+            flash(f'載入複習內容時發生錯誤：{str(e)}', 'error')
+            return redirect(url_for('index'))
+
     @app.route('/search')
     def search():
         """

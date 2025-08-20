@@ -1,0 +1,417 @@
+{% extends "base.html" %}
+
+{% block title %}隨機複習 - 英文單字筆記本{% endblock %}
+
+{% block extra_css %}
+<style>
+.review-card {
+    min-height: 400px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.review-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.review-card.flipped .card-front {
+    transform: rotateY(180deg);
+}
+
+.review-card.flipped .card-back {
+    transform: rotateY(0deg);
+}
+
+.card-front, .card-back {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden;
+    transition: transform 0.6s;
+    border-radius: 0.5rem;
+}
+
+.card-back {
+    transform: rotateY(180deg);
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+}
+
+.review-progress {
+    height: 8px;
+    background-color: #e9ecef;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.review-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #28a745, #20c997);
+    transition: width 0.3s ease;
+}
+
+.word-display {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: #0d6efd;
+}
+
+.phonetic-display {
+    font-size: 1.2rem;
+    color: #6c757d;
+    font-family: monospace;
+}
+
+.meaning-display {
+    font-size: 1.5rem;
+    color: #198754;
+}
+
+.control-buttons {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+}
+
+@media (max-width: 768px) {
+    .word-display {
+        font-size: 2rem;
+    }
+
+    .meaning-display {
+        font-size: 1.2rem;
+    }
+
+    .control-buttons {
+        bottom: 1rem;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 頂部進度條 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h2>
+                    <i class="bi bi-shuffle"></i> 隨機複習
+                </h2>
+                <div class="d-flex align-items-center gap-3">
+                    <span class="text-muted">
+                        <span id="currentIndex">1</span> / {{ total_words }}
+                    </span>
+                    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-x-lg"></i> 結束複習
+                    </a>
+                </div>
+            </div>
+            <div class="review-progress">
+                <div class="review-progress-bar" id="progressBar" style="width: 0%"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 複習卡片 -->
+    <div class="row justify-content-center">
+        <div class="col-lg-8 col-xl-6">
+            <div class="review-card card position-relative" id="reviewCard" onclick="flipCard()">
+                <!-- 正面 - 顯示英文單字 -->
+                <div class="card-front">
+                    <div class="card-body d-flex flex-column justify-content-center align-items-center text-center h-100">
+                        <div class="mb-4">
+                            <div class="word-display" id="wordDisplay"></div>
+                            <div class="phonetic-display mt-2" id="phoneticDisplay"></div>
+                        </div>
+                        <div class="text-muted">
+                            <i class="bi bi-mouse"></i> 點擊卡片查看答案
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 背面 - 顯示中文翻譯和詳細資訊 -->
+                <div class="card-back">
+                    <div class="card-body d-flex flex-column justify-content-center align-items-center text-center h-100">
+                        <div class="mb-3">
+                            <div class="meaning-display" id="meaningDisplay"></div>
+                        </div>
+                        <div class="mb-3" id="englishMeaningDisplay"></div>
+                        <div class="mb-3" id="exampleDisplay"></div>
+                        <div class="row w-100" id="synonymsAntonymsDisplay"></div>
+                        <div class="text-muted mt-3">
+                            <i class="bi bi-mouse"></i> 點擊卡片返回正面
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 控制按鈕 -->
+    <div class="control-buttons">
+        <div class="btn-group" role="group">
+            <button type="button" class="btn btn-outline-primary" id="prevBtn" onclick="previousCard()">
+                <i class="bi bi-chevron-left"></i> 上一個
+            </button>
+            <button type="button" class="btn btn-primary" id="flipBtn" onclick="flipCard()">
+                <i class="bi bi-arrow-repeat"></i> 翻轉
+            </button>
+            <button type="button" class="btn btn-outline-primary" id="nextBtn" onclick="nextCard()">
+                下一個 <i class="bi bi-chevron-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- 複習統計 Modal -->
+    <div class="modal fade" id="reviewStatsModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-trophy"></i> 複習完成！
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <div class="mb-4">
+                        <i class="bi bi-check-circle-fill text-success" style="font-size: 3rem;"></i>
+                    </div>
+                    <h4>恭喜完成複習！</h4>
+                    <p class="text-muted">您已經複習了 <strong>{{ total_words }}</strong> 個單字</p>
+
+                    <div class="row text-center mt-4">
+                        <div class="col-4">
+                            <div class="h3 text-primary">{{ total_words }}</div>
+                            <small class="text-muted">總單字數</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="h3 text-success" id="reviewTime">0</div>
+                            <small class="text-muted">複習時間(分)</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="h3 text-info" id="avgTime">0</div>
+                            <small class="text-muted">平均時間(秒)</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" onclick="restartReview()">
+                        <i class="bi bi-arrow-repeat"></i> 重新複習
+                    </button>
+                    <a href="{{ url_for('index') }}" class="btn btn-primary">
+                        <i class="bi bi-house"></i> 返回首頁
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 複習資料
+const words = {{ words | tojson }};
+let currentIndex = 0;
+let isFlipped = false;
+let startTime = new Date();
+let reviewedWords = new Set();
+
+// 初始化
+document.addEventListener('DOMContentLoaded', function() {
+    if (words.length === 0) {
+        alert('沒有單字可以複習');
+        window.location.href = '{{ url_for("index") }}';
+        return;
+    }
+
+    displayCurrentWord();
+    updateProgress();
+    updateButtons();
+});
+
+// 顯示當前單字
+function displayCurrentWord() {
+    const word = words[currentIndex];
+
+    // 更新正面
+    document.getElementById('wordDisplay').textContent = word.word;
+    document.getElementById('phoneticDisplay').textContent = word.phonetic || '';
+
+    // 更新背面
+    document.getElementById('meaningDisplay').textContent = word.chinese_meaning;
+
+    // 英文定義
+    const englishMeaningEl = document.getElementById('englishMeaningDisplay');
+    if (word.english_meaning) {
+        englishMeaningEl.innerHTML = `<p class="text-muted">${word.english_meaning}</p>`;
+    } else {
+        englishMeaningEl.innerHTML = '';
+    }
+
+    // 例句
+    const exampleEl = document.getElementById('exampleDisplay');
+    if (word.example_sentence) {
+        exampleEl.innerHTML = `<blockquote class="blockquote-footer small">"${word.example_sentence}"</blockquote>`;
+    } else {
+        exampleEl.innerHTML = '';
+    }
+
+    // 同義詞和反義詞
+    const synonymsAntonymsEl = document.getElementById('synonymsAntonymsDisplay');
+    let synonymsAntonymsHtml = '';
+
+    if (word.synonyms && word.synonyms.length > 0) {
+        synonymsAntonymsHtml += `
+            <div class="col-6">
+                <small class="text-success">同義詞:</small><br>
+                ${word.synonyms.map(s => `<span class="badge bg-success-subtle text-success-emphasis me-1">${s}</span>`).join('')}
+            </div>
+        `;
+    }
+
+    if (word.antonyms && word.antonyms.length > 0) {
+        synonymsAntonymsHtml += `
+            <div class="col-6">
+                <small class="text-danger">反義詞:</small><br>
+                ${word.antonyms.map(a => `<span class="badge bg-danger-subtle text-danger-emphasis me-1">${a}</span>`).join('')}
+            </div>
+        `;
+    }
+
+    synonymsAntonymsEl.innerHTML = synonymsAntonymsHtml;
+
+    // 重置翻轉狀態
+    isFlipped = false;
+    document.getElementById('reviewCard').classList.remove('flipped');
+
+    // 標記為已複習
+    reviewedWords.add(currentIndex);
+}
+
+// 翻轉卡片
+function flipCard() {
+    isFlipped = !isFlipped;
+    const card = document.getElementById('reviewCard');
+
+    if (isFlipped) {
+        card.classList.add('flipped');
+    } else {
+        card.classList.remove('flipped');
+    }
+}
+
+// 下一張卡片
+function nextCard() {
+    if (currentIndex < words.length - 1) {
+        currentIndex++;
+        displayCurrentWord();
+        updateProgress();
+        updateButtons();
+    } else {
+        // 複習完成
+        showReviewStats();
+    }
+}
+
+// 上一張卡片
+function previousCard() {
+    if (currentIndex > 0) {
+        currentIndex--;
+        displayCurrentWord();
+        updateProgress();
+        updateButtons();
+    }
+}
+
+// 更新進度條
+function updateProgress() {
+    const progress = ((currentIndex + 1) / words.length) * 100;
+    document.getElementById('progressBar').style.width = progress + '%';
+    document.getElementById('currentIndex').textContent = currentIndex + 1;
+}
+
+// 更新按鈕狀態
+function updateButtons() {
+    document.getElementById('prevBtn').disabled = currentIndex === 0;
+
+    const nextBtn = document.getElementById('nextBtn');
+    if (currentIndex === words.length - 1) {
+        nextBtn.innerHTML = '完成複習 <i class="bi bi-check-lg"></i>';
+        nextBtn.classList.remove('btn-outline-primary');
+        nextBtn.classList.add('btn-success');
+    } else {
+        nextBtn.innerHTML = '下一個 <i class="bi bi-chevron-right"></i>';
+        nextBtn.classList.remove('btn-success');
+        nextBtn.classList.add('btn-outline-primary');
+    }
+}
+
+// 顯示複習統計
+function showReviewStats() {
+    const endTime = new Date();
+    const reviewTimeMinutes = Math.round((endTime - startTime) / 60000);
+    const avgTimeSeconds = Math.round((endTime - startTime) / 1000 / words.length);
+
+    document.getElementById('reviewTime').textContent = reviewTimeMinutes;
+    document.getElementById('avgTime').textContent = avgTimeSeconds;
+
+    const modal = new bootstrap.Modal(document.getElementById('reviewStatsModal'));
+    modal.show();
+}
+
+// 重新開始複習
+function restartReview() {
+    currentIndex = 0;
+    reviewedWords.clear();
+    startTime = new Date();
+
+    // 重新打亂單字順序
+    for (let i = words.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [words[i], words[j]] = [words[j], words[i]];
+    }
+
+    displayCurrentWord();
+    updateProgress();
+    updateButtons();
+
+    // 關閉統計 Modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('reviewStatsModal'));
+    modal.hide();
+}
+
+// 鍵盤快捷鍵
+document.addEventListener('keydown', function(e) {
+    switch(e.key) {
+        case 'ArrowLeft':
+            e.preventDefault();
+            previousCard();
+            break;
+        case 'ArrowRight':
+            e.preventDefault();
+            nextCard();
+            break;
+        case ' ':
+        case 'Enter':
+            e.preventDefault();
+            flipCard();
+            break;
+        case 'Escape':
+            window.location.href = '{{ url_for("index") }}';
+            break;
+    }
+});
+
+// 防止意外離開
+window.addEventListener('beforeunload', function(e) {
+    if (reviewedWords.size > 0 && currentIndex < words.length - 1) {
+        e.preventDefault();
+        e.returnValue = '您的複習進度將會遺失，確定要離開嗎？';
+    }
+});
+</script>
+{% endblock %}
