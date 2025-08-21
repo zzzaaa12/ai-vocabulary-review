@@ -3,32 +3,22 @@
 {% block extra_css %}
 <style>
 .quick-search-container {
-    border: 2px dashed #dee2e6;
+    border: 2px dashed var(--theme-border);
     border-radius: 12px;
     padding: 20px;
-    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    background: var(--theme-gradient-light);
     transition: all 0.3s ease;
-}
-
-.quick-search-container:hover {
-    border-color: #0d6efd;
-    box-shadow: 0 4px 12px rgba(13, 110, 253, 0.1);
 }
 
 .quick-search-container .input-group-lg .form-control {
     border-radius: 8px 0 0 8px;
-    border: 2px solid #dee2e6;
+    border: 2px solid var(--theme-border);
     transition: border-color 0.3s ease;
-}
-
-.quick-search-container .input-group-lg .form-control:focus {
-    border-color: #0d6efd;
-    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
 }
 
 .quick-search-container .btn-primary {
     border-radius: 0 8px 8px 0;
-    border: 2px solid #0d6efd;
+    border: 2px solid var(--theme-primary);
     border-left: none;
     padding: 0.75rem 1.5rem;
 }
@@ -452,12 +442,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 輸入框焦點效果
     quickSearchWord.addEventListener('focus', function() {
-        document.querySelector('.quick-search-container').style.borderColor = '#0d6efd';
-        document.querySelector('.quick-search-container').style.boxShadow = '0 4px 12px rgba(13, 110, 253, 0.15)';
+        document.querySelector('.quick-search-container').style.borderColor = 'var(--theme-primary)';
+        document.querySelector('.quick-search-container').style.boxShadow = '0 4px 12px rgba(var(--theme-primary-rgb), 0.15)';
     });
 
     quickSearchWord.addEventListener('blur', function() {
-        document.querySelector('.quick-search-container').style.borderColor = '#dee2e6';
+        document.querySelector('.quick-search-container').style.borderColor = 'var(--theme-border)';
         document.querySelector('.quick-search-container').style.boxShadow = 'none';
     });
 
