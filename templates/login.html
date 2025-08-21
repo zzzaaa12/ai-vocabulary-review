@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block title %}登入 - 英文單字筆記本{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-4">
+            <div class="card shadow">
+                <div class="card-header text-center bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-shield-lock"></i> 身份驗證
+                    </h4>
+                </div>
+                <div class="card-body p-4">
+                    {% if blocked_info and blocked_info.is_blocked %}
+                    <div class="alert alert-danger" role="alert">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        嘗試次數過多，請等待 {{ (blocked_info.seconds_left // 60) + 1 }} 分鐘後再試
+                    </div>
+                    {% else %}
+                    <form method="POST" action="{{ url_for('login') }}" id="loginForm">
+                        <div class="mb-3">
+                            <label for="passcode" class="form-label">請輸入通行碼</label>
+                            <div class="input-group">
+                                <input type="password"
+                                       class="form-control"
+                                       id="passcode"
+                                       name="passcode"
+                                       required
+                                       autocomplete="current-password"
+                                       {% if blocked_info and blocked_info.is_blocked %}disabled{% endif %}>
+                                <button type="button"
+                                        class="btn btn-outline-secondary"
+                                        id="togglePassword"
+                                        {% if blocked_info and blocked_info.is_blocked %}disabled{% endif %}>
+                                    <i class="bi bi-eye" id="toggleIcon"></i>
+                                </button>
+                            </div>
+                            {% if failed_attempts and failed_attempts > 0 %}
+                            <div class="form-text text-warning">
+                                <i class="bi bi-exclamation-triangle"></i>
+                                已失敗 {{ failed_attempts }} 次，還有 {{ max_attempts - failed_attempts }} 次機會
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit"
+                                    class="btn btn-primary"
+                                    {% if blocked_info and blocked_info.is_blocked %}disabled{% endif %}>
+                                <i class="bi bi-box-arrow-in-right"></i> 登入
+                            </button>
+                        </div>
+                    </form>
+                    {% endif %}
+
+                    <hr class="my-4">
+
+                    <div class="text-center">
+                        <p class="text-muted mb-2">
+                            <small>
+                                <i class="bi bi-info-circle"></i>
+                                如果您忘記了通行碼，請聯絡管理員
+                            </small>
+                        </p>
+                        {% if session_info %}
+                        <p class="text-muted mb-0">
+                            <small>
+                                <i class="bi bi-clock"></i>
+                                {% if session_info.auto_logout_enabled %}
+                                登入後將在 {{ auto_logout_hours }} 小時後自動登出
+                                {% else %}
+                                登入狀態將持續保持
+                                {% endif %}
+                            </small>
+                        </p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- 系統狀態顯示 -->
+            <div class="mt-4 text-center">
+                <small class="text-muted">
+                    <i class="bi bi-shield-check"></i>
+                    系統已啟用通行碼保護
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 密碼顯示/隱藏切換
+    const togglePassword = document.getElementById('togglePassword');
+    const passwordInput = document.getElementById('passcode');
+    const toggleIcon = document.getElementById('toggleIcon');
+
+    if (togglePassword && passwordInput && toggleIcon) {
+        togglePassword.addEventListener('click', function() {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+
+            if (type === 'password') {
+                toggleIcon.className = 'bi bi-eye';
+            } else {
+                toggleIcon.className = 'bi bi-eye-slash';
+            }
+        });
+    }
+
+    // 表單焦點
+    const passcodeInput = document.getElementById('passcode');
+    if (passcodeInput && !passcodeInput.disabled) {
+        passcodeInput.focus();
+    }
+
+    // 表單提交處理
+    const loginForm = document.getElementById('loginForm');
+    if (loginForm) {
+        loginForm.addEventListener('submit', function(e) {
+            const passcodeInput = document.getElementById('passcode');
+            const submitButton = this.querySelector('button[type="submit"]');
+
+            if (passcodeInput.value.trim() === '') {
+                e.preventDefault();
+                alert('請輸入通行碼');
+                passcodeInput.focus();
+                return;
+            }
+
+            // 顯示載入狀態
+            if (submitButton) {
+                submitButton.disabled = true;
+                const originalText = submitButton.innerHTML;
+                submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 驗證中...';
+
+                // 防止多次提交，3秒後恢復按鈕
+                setTimeout(function() {
+                    if (submitButton.disabled) {
+                        submitButton.disabled = false;
+                        submitButton.innerHTML = originalText;
+                    }
+                }, 3000);
+            }
+        });
+    }
+
+    // 自動刷新被封鎖狀態
+    {% if blocked_info and blocked_info.is_blocked %}
+    const refreshDelay = {{ blocked_info.seconds_left * 1000 }};
+    setTimeout(function() {
+        window.location.reload();
+    }, refreshDelay);
+    {% endif %}
+});
+</script>
+{% endblock %}

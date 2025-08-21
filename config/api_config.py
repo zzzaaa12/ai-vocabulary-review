@@ -88,6 +88,13 @@ class APIConfigManager:
                     "default_provider": "openai",
                     "timeout": 30,
                     "max_retries": 3
+                },
+                "auth": {
+                    "passcode": "",
+                    "enabled": False,
+                    "auto_logout_enabled": True,
+                    "auto_logout_hours": 24,
+                    "max_failed_attempts": 5
                 }
             }
 
@@ -280,6 +287,98 @@ class APIConfigManager:
         elif provider == "gemini":
             self.set_gemini_api_key("")
 
+    def set_passcode(self, passcode: str) -> None:
+        """
+        Set authentication passcode.
+
+        Args:
+            passcode: Passcode for website access
+        """
+        encrypted_passcode = self._encrypt_value(passcode)
+        self.config["auth"]["passcode"] = encrypted_passcode
+        self.config["auth"]["enabled"] = bool(passcode.strip())
+        self._save_config()
+
+    def get_passcode(self) -> str:
+        """
+        Get authentication passcode.
+
+        Returns:
+            Decrypted passcode
+        """
+        encrypted_passcode = self.config.get("auth", {}).get("passcode", "")
+        return self._decrypt_value(encrypted_passcode)
+
+    def is_passcode_configured(self) -> bool:
+        """Check if passcode is configured."""
+        return bool(self.get_passcode())
+
+    def is_auth_enabled(self) -> bool:
+        """Check if authentication is enabled."""
+        return self.config.get("auth", {}).get("enabled", False)
+
+    def verify_passcode(self, input_passcode: str) -> bool:
+        """
+        Verify if the input passcode matches the stored one.
+
+        Args:
+            input_passcode: Passcode to verify
+
+        Returns:
+            True if passcode matches, False otherwise
+        """
+        if not self.is_passcode_configured():
+            return True  # No passcode configured, allow access
+
+        stored_passcode = self.get_passcode()
+        return stored_passcode == input_passcode
+
+    def clear_passcode(self) -> None:
+        """Clear the authentication passcode."""
+        self.set_passcode("")
+
+    def set_auto_logout_enabled(self, enabled: bool) -> None:
+        """
+        Set auto logout enabled state.
+
+        Args:
+            enabled: Whether auto logout is enabled
+        """
+        self.config["auth"]["auto_logout_enabled"] = enabled
+        self._save_config()
+
+    def is_auto_logout_enabled(self) -> bool:
+        """Check if auto logout is enabled."""
+        return self.config.get("auth", {}).get("auto_logout_enabled", True)
+
+    def set_auto_logout_hours(self, hours: int) -> None:
+        """
+        Set auto logout time in hours.
+
+        Args:
+            hours: Hours after which user will be auto logged out
+        """
+        self.config["auth"]["auto_logout_hours"] = max(1, min(168, hours))  # 1 hour to 1 week
+        self._save_config()
+
+    def get_auto_logout_hours(self) -> int:
+        """Get auto logout hours."""
+        return self.config.get("auth", {}).get("auto_logout_hours", 24)
+
+    def set_max_failed_attempts(self, attempts: int) -> None:
+        """
+        Set maximum failed login attempts.
+
+        Args:
+            attempts: Maximum failed attempts before blocking
+        """
+        self.config["auth"]["max_failed_attempts"] = max(3, min(20, attempts))
+        self._save_config()
+
+    def get_max_failed_attempts(self) -> int:
+        """Get maximum failed attempts."""
+        return self.config.get("auth", {}).get("max_failed_attempts", 5)
+
     def export_config(self, include_keys: bool = False) -> Dict:
         """
         Export configuration.
@@ -297,10 +396,12 @@ class APIConfigManager:
             # Decrypt keys for export
             config_copy["openai"]["api_key"] = self.get_openai_api_key()
             config_copy["gemini"]["api_key"] = self.get_gemini_api_key()
+            config_copy["auth"]["passcode"] = self.get_passcode()
         else:
             # Remove keys from export
             config_copy["openai"]["api_key"] = "***" if self.get_openai_api_key() else ""
             config_copy["gemini"]["api_key"] = "***" if self.get_gemini_api_key() else ""
+            config_copy["auth"]["passcode"] = "***" if self.get_passcode() else ""
 
         return config_copy
 
@@ -332,6 +433,12 @@ class APIConfigManager:
                 "available_providers": available_providers,
                 "timeout": self.get_timeout(),
                 "max_retries": self.get_max_retries()
+            },
+            "auth": {
+                "passcode_configured": self.is_passcode_configured(),
+                "auto_logout_enabled": self.is_auto_logout_enabled(),
+                "auto_logout_hours": self.get_auto_logout_hours(),
+                "max_failed_attempts": self.get_max_failed_attempts()
             }
         }
 

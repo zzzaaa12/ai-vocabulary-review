@@ -3,13 +3,14 @@ Flask application for English Vocabulary Notebook.
 Main application entry point with route definitions.
 """
 
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
 from datetime import datetime
 import os
 
 # Import our models and services
 from models import Word, VocabularyData
 from services import VocabularyService
+from config.auth import AuthManager, require_auth, require_auth_api
 
 
 def create_app():
@@ -25,6 +26,9 @@ def create_app():
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
     app.config['DATA_DIR'] = os.path.join(os.path.dirname(__file__), 'data')
     app.config['VOCABULARY_FILE'] = os.path.join(app.config['DATA_DIR'], 'vocabulary.json')
+
+    # Session configuration
+    app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 hours in seconds
 
     # Ensure data directory exists
     os.makedirs(app.config['DATA_DIR'], exist_ok=True)
@@ -47,6 +51,7 @@ def register_routes(app):
     """
 
     @app.route('/')
+    @require_auth
     def index():
         """
         Main page displaying vocabulary list with optional time filtering.
@@ -91,6 +96,7 @@ def register_routes(app):
                                  total_words=0)
 
     @app.route('/word/<word_id>')
+    @require_auth
     def word_detail(word_id):
         """
         Display detailed information for a specific word.
@@ -112,6 +118,7 @@ def register_routes(app):
             return redirect(url_for('index'))
 
     @app.route('/add', methods=['GET', 'POST'])
+    @require_auth
     def add_word():
         """
         Handle adding new vocabulary words.
@@ -170,6 +177,7 @@ def register_routes(app):
         return render_template('add_word.html')
 
     @app.route('/edit/<word_id>', methods=['GET', 'POST'])
+    @require_auth
     def edit_word(word_id):
         """
         Handle editing existing vocabulary words.
@@ -242,6 +250,7 @@ def register_routes(app):
             return redirect(url_for('index'))
 
     @app.route('/delete/<word_id>', methods=['POST'])
+    @require_auth
     def delete_word(word_id):
         """
         Handle word deletion.
@@ -271,6 +280,7 @@ def register_routes(app):
         return redirect(url_for('index'))
 
     @app.route('/review')
+    @require_auth
     def random_review():
         """
         Random vocabulary review page.
@@ -308,6 +318,7 @@ def register_routes(app):
             return redirect(url_for('index'))
 
     @app.route('/search')
+    @require_auth_api
     def search():
         """
         Handle vocabulary search requests.
@@ -354,6 +365,7 @@ def register_routes(app):
             })
 
     @app.route('/settings')
+    @require_auth
     def settings():
         """
         Display settings page with API configuration.
@@ -364,6 +376,7 @@ def register_routes(app):
         return render_template('settings.html', status=status)
 
     @app.route('/settings/api', methods=['GET', 'POST'])
+    @require_auth
     def api_settings():
         """
         Handle API key configuration.
@@ -418,6 +431,7 @@ def register_routes(app):
         return render_template('api_settings.html', status=status)
 
     @app.route('/settings/api/clear', methods=['POST'])
+    @require_auth
     def clear_api_key():
         """
         Clear API key for specified provider.
@@ -435,6 +449,7 @@ def register_routes(app):
         return redirect(url_for('api_settings'))
 
     @app.route('/settings/api/test', methods=['POST'])
+    @require_auth_api
     def test_api_connection():
         """
         Test API connection for specified provider.
@@ -462,6 +477,7 @@ def register_routes(app):
             })
 
     @app.route('/api/ai-status', methods=['GET'])
+    @require_auth_api
     def ai_status():
         """
         Get AI service status.
@@ -483,6 +499,7 @@ def register_routes(app):
             })
 
     @app.route('/api/generate-word-info', methods=['POST'])
+    @require_auth_api
     def generate_word_info():
         """
         Generate word information using AI.
@@ -538,6 +555,7 @@ def register_routes(app):
             })
 
     @app.route('/api/stats', methods=['GET'])
+    @require_auth_api
     def get_stats():
         """
         Get vocabulary statistics.
@@ -576,6 +594,157 @@ def register_routes(app):
     def internal_error(error):
         """Handle 500 errors."""
         return render_template('500.html'), 500
+
+    @app.route('/login', methods=['GET', 'POST'])
+    def login():
+        """
+        Handle user authentication.
+        GET: Display login form
+        POST: Process login credentials
+        """
+        from config.api_config import api_config
+
+        # If no passcode configured, redirect to settings
+        if not AuthManager.is_passcode_required():
+            flash('尚未設定通行碼，請先設定', 'warning')
+            return redirect(url_for('api_settings'))
+
+        # If already authenticated, redirect to intended page or home
+        if AuthManager.is_authenticated():
+            next_url = session.pop('next_url', None)
+            return redirect(next_url or url_for('index'))
+
+        # Check if user is blocked
+        blocked_info = {}
+        is_blocked, seconds_left = AuthManager.is_blocked()
+        if is_blocked:
+            blocked_info = {
+                'is_blocked': True,
+                'seconds_left': seconds_left
+            }
+
+        if request.method == 'POST':
+            passcode = request.form.get('passcode', '').strip()
+
+            if not passcode:
+                flash('請輸入通行碼', 'error')
+            else:
+                success, message = AuthManager.authenticate(passcode)
+
+                if success:
+                    flash(message, 'success')
+                    next_url = session.pop('next_url', None)
+                    return redirect(next_url or url_for('index'))
+                else:
+                    flash(message, 'error')
+
+        # Prepare template context
+        context = {
+            'blocked_info': blocked_info,
+            'failed_attempts': session.get(AuthManager.SESSION_FAILED_ATTEMPTS, 0),
+            'max_attempts': api_config.get_max_failed_attempts(),
+            'auto_logout_hours': api_config.get_auto_logout_hours(),
+            'session_info': {'auto_logout_enabled': api_config.is_auto_logout_enabled()}
+        }
+
+        return render_template('login.html', **context)
+
+    @app.route('/logout', methods=['POST', 'GET'])
+    def logout():
+        """Handle user logout."""
+        AuthManager.logout()
+        flash('已成功登出', 'success')
+        return redirect(url_for('login'))
+
+    @app.route('/auth/status')
+    def auth_status():
+        """Get authentication status for AJAX requests."""
+        return jsonify({
+            'authenticated': AuthManager.is_authenticated(),
+            'passcode_required': AuthManager.is_passcode_required(),
+            'session_info': AuthManager.get_session_info()
+        })
+
+    @app.route('/settings/passcode', methods=['POST'])
+    @require_auth
+    def passcode_settings():
+        """Handle passcode configuration."""
+        from config.api_config import api_config
+
+        try:
+            # Get form data
+            current_passcode = request.form.get('current_passcode', '').strip()
+            new_passcode = request.form.get('new_passcode', '').strip()
+            confirm_passcode = request.form.get('confirm_passcode', '').strip()
+            auto_logout_enabled = request.form.get('auto_logout_enabled') == '1'
+            auto_logout_hours = int(request.form.get('auto_logout_hours', 24))
+            max_failed_attempts = int(request.form.get('max_failed_attempts', 5))
+
+            # Validate new passcode
+            if not new_passcode:
+                flash('請輸入新通行碼', 'error')
+                return redirect(url_for('settings'))
+
+            if len(new_passcode) < 4 or len(new_passcode) > 50:
+                flash('通行碼長度必須在 4-50 個字符之間', 'error')
+                return redirect(url_for('settings'))
+
+            if new_passcode != confirm_passcode:
+                flash('兩次輸入的通行碼不一致', 'error')
+                return redirect(url_for('settings'))
+
+            # If updating existing passcode, verify current passcode
+            if api_config.is_passcode_configured():
+                if not current_passcode:
+                    flash('請輸入目前的通行碼', 'error')
+                    return redirect(url_for('settings'))
+
+                if not api_config.verify_passcode(current_passcode):
+                    flash('目前通行碼錯誤', 'error')
+                    return redirect(url_for('settings'))
+
+            # Update passcode
+            api_config.set_passcode(new_passcode)
+
+            # Update other settings
+            api_config.set_auto_logout_enabled(auto_logout_enabled)
+            api_config.set_auto_logout_hours(auto_logout_hours)
+            api_config.set_max_failed_attempts(max_failed_attempts)
+
+            flash('通行碼設定已更新', 'success')
+
+            # If this is the first time setting a passcode, logout to force re-authentication
+            if not current_passcode:
+                AuthManager.logout()
+                flash('通行碼已設定，請重新登入', 'info')
+                return redirect(url_for('login'))
+
+        except ValueError as e:
+            flash(f'設定錯誤: {str(e)}', 'error')
+        except Exception as e:
+            flash(f'儲存設定時發生錯誤: {str(e)}', 'error')
+
+        return redirect(url_for('settings'))
+
+    @app.route('/settings/passcode/clear', methods=['POST'])
+    @require_auth
+    def clear_passcode():
+        """Clear passcode protection."""
+        from config.api_config import api_config
+
+        try:
+            # Clear passcode
+            api_config.clear_passcode()
+
+            # Logout current session
+            AuthManager.logout()
+
+            flash('通行碼保護已移除', 'success')
+            return redirect(url_for('index'))  # Redirect to home since no auth required now
+
+        except Exception as e:
+            flash(f'移除通行碼時發生錯誤: {str(e)}', 'error')
+            return redirect(url_for('settings'))
 
     @app.errorhandler(400)
     def bad_request(error):

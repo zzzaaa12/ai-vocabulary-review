@@ -12,6 +12,73 @@
 </div>
 
 <div class="row">
+    <!-- 通行碼設定卡片 -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-shield-lock"></i> 通行碼設定
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="card-text">設定網站通行碼，增強安全性。</p>
+
+                <!-- 通行碼狀態 -->
+                <div class="mb-3">
+                    <h6>
+                        <span class="status-indicator {{ 'status-success' if status.auth.passcode_configured else 'status-warning' }}"></span>
+                        通行碼保護
+                    </h6>
+                    <small class="text-muted">
+                        {% if status.auth.passcode_configured %}
+                            已啟用
+                            <span class="badge bg-success status-badge">已保護</span>
+                        {% else %}
+                            未設定
+                            <span class="badge bg-warning status-badge">無保護</span>
+                        {% endif %}
+                    </small>
+                </div>
+
+                <!-- 自動登出設定 -->
+                <div class="mb-3">
+                    <h6>自動登出</h6>
+                    <small class="text-muted">
+                        {% if status.auth.auto_logout_enabled %}
+                            已啟用 ({{ status.auth.auto_logout_hours }} 小時後自動登出)
+                        {% else %}
+                            已停用 (永久登入)
+                        {% endif %}
+                    </small>
+                </div>
+
+                <!-- 安全設定 -->
+                <div class="mb-3">
+                    <h6>安全設定</h6>
+                    <small class="text-muted">
+                        最大失敗次數: {{ status.auth.max_failed_attempts }} 次<br>
+                        失敗後封鎖: 30 分鐘
+                    </small>
+                </div>
+            </div>
+            <div class="card-footer">
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#passcodeModal">
+                    <i class="bi bi-key"></i>
+                    {% if status.auth.passcode_configured %}
+                        管理通行碼
+                    {% else %}
+                        設定通行碼
+                    {% endif %}
+                </button>
+                {% if status.auth.passcode_configured %}
+                <a href="{{ url_for('logout') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-box-arrow-right"></i> 登出
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
     <!-- AI API 設定卡片 -->
     <div class="col-md-6 mb-4">
         <div class="card h-100">
@@ -154,4 +221,180 @@
         </div>
     </div>
 </div>
+
+<!-- 通行碼設定模態對話框 -->
+<div class="modal fade" id="passcodeModal" tabindex="-1" aria-labelledby="passcodeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="passcodeModalLabel">
+                    <i class="bi bi-shield-lock"></i> 通行碼設定
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="passcodeForm" action="{{ url_for('passcode_settings') }}" method="POST">
+                <div class="modal-body">
+                    {% if status.auth.passcode_configured %}
+                    <!-- 修改通行碼 -->
+                    <div class="mb-3">
+                        <label for="currentPasscode" class="form-label">目前通行碼</label>
+                        <input type="password" class="form-control" id="currentPasscode" name="current_passcode" required>
+                    </div>
+                    {% endif %}
+
+                    <div class="mb-3">
+                        <label for="newPasscode" class="form-label">
+                            {% if status.auth.passcode_configured %}新{% else %}設定{% endif %}通行碼
+                        </label>
+                        <input type="password" class="form-control" id="newPasscode" name="new_passcode"
+                               required minlength="4" maxlength="50">
+                        <div class="form-text">通行碼長度應在 4-50 個字符之間</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="confirmPasscode" class="form-label">確認新通行碼</label>
+                        <input type="password" class="form-control" id="confirmPasscode" name="confirm_passcode" required>
+                        <div class="invalid-feedback" id="passwordMismatch" style="display: none;">
+                            兩次輸入的通行碼不一致
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- 自動登出設定 -->
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="autoLogoutEnabled"
+                                   name="auto_logout_enabled" value="1"
+                                   {% if status.auth.auto_logout_enabled %}checked{% endif %}>
+                            <label class="form-check-label" for="autoLogoutEnabled">
+                                啟用自動登出
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="autoLogoutHours" class="form-label">自動登出時間 (小時)</label>
+                        <input type="number" class="form-control" id="autoLogoutHours"
+                               name="auto_logout_hours" min="1" max="168"
+                               value="{{ status.auth.auto_logout_hours }}">
+                        <div class="form-text">1-168 小時（最長一週）</div>
+                    </div>
+
+                    <!-- 安全設定 -->
+                    <div class="mb-3">
+                        <label for="maxFailedAttempts" class="form-label">最大失敗次數</label>
+                        <input type="number" class="form-control" id="maxFailedAttempts"
+                               name="max_failed_attempts" min="3" max="20"
+                               value="{{ status.auth.max_failed_attempts }}">
+                        <div class="form-text">失敗超過此次數將被暫時封鎖 30 分鐘</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    {% if status.auth.passcode_configured %}
+                    <button type="button" class="btn btn-danger" id="clearPasscodeBtn">
+                        <i class="bi bi-trash"></i> 移除通行碼
+                    </button>
+                    {% endif %}
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check"></i> 儲存設定
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 確認移除通行碼對話框 -->
+<div class="modal fade" id="clearPasscodeModal" tabindex="-1" aria-labelledby="clearPasscodeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="clearPasscodeModalLabel">
+                    <i class="bi bi-exclamation-triangle text-warning"></i> 確認移除
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>您確定要移除通行碼保護嗎？</p>
+                <p><small class="text-muted">移除後，任何人都可以直接存取您的單字筆記本。</small></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <form action="{{ url_for('clear_passcode') }}" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash"></i> 確認移除
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 通行碼表單驗證
+    const passcodeForm = document.getElementById('passcodeForm');
+    const newPasscode = document.getElementById('newPasscode');
+    const confirmPasscode = document.getElementById('confirmPasscode');
+    const passwordMismatch = document.getElementById('passwordMismatch');
+
+    function validatePasswords() {
+        if (newPasscode.value && confirmPasscode.value) {
+            if (newPasscode.value !== confirmPasscode.value) {
+                confirmPasscode.classList.add('is-invalid');
+                passwordMismatch.style.display = 'block';
+                return false;
+            } else {
+                confirmPasscode.classList.remove('is-invalid');
+                passwordMismatch.style.display = 'none';
+                return true;
+            }
+        }
+        return true;
+    }
+
+    if (newPasscode && confirmPasscode) {
+        newPasscode.addEventListener('input', validatePasswords);
+        confirmPasscode.addEventListener('input', validatePasswords);
+    }
+
+    if (passcodeForm) {
+        passcodeForm.addEventListener('submit', function(e) {
+            if (!validatePasswords()) {
+                e.preventDefault();
+                return false;
+            }
+        });
+    }
+
+    // 移除通行碼按鈕
+    const clearPasscodeBtn = document.getElementById('clearPasscodeBtn');
+    if (clearPasscodeBtn) {
+        clearPasscodeBtn.addEventListener('click', function() {
+            const passcodeModal = bootstrap.Modal.getInstance(document.getElementById('passcodeModal'));
+            if (passcodeModal) {
+                passcodeModal.hide();
+            }
+
+            const clearModal = new bootstrap.Modal(document.getElementById('clearPasscodeModal'));
+            clearModal.show();
+        });
+    }
+
+    // 自動登出設定切換
+    const autoLogoutEnabled = document.getElementById('autoLogoutEnabled');
+    const autoLogoutHours = document.getElementById('autoLogoutHours');
+
+    if (autoLogoutEnabled && autoLogoutHours) {
+        function toggleAutoLogoutHours() {
+            autoLogoutHours.disabled = !autoLogoutEnabled.checked;
+        }
+
+        autoLogoutEnabled.addEventListener('change', toggleAutoLogoutHours);
+        toggleAutoLogoutHours(); // 初始狀態
+    }
+});
+</script>
 {% endblock %}

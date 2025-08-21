@@ -126,6 +126,21 @@
                             </a></li>
                         </ul>
                     </li>
+
+                    <!-- 身份驗證狀態 -->
+                    <li class="nav-item" id="authStatusItem" style="display: none;">
+                        <span class="navbar-text me-2">
+                            <i class="bi bi-shield-check text-success"></i>
+                            <small class="d-none d-md-inline">已認證</small>
+                        </span>
+                    </li>
+
+                    <!-- 登出按鈕 -->
+                    <li class="nav-item" id="logoutItem" style="display: none;">
+                        <a class="nav-link" href="{{ url_for('logout') }}" onclick="return confirm('確定要登出嗎？')">
+                            <i class="bi bi-box-arrow-right"></i> <span class="d-none d-md-inline">登出</span>
+                        </a>
+                    </li>
                 </ul>
             </div>
         </div>
@@ -250,6 +265,79 @@
                         notification.remove();
                     }
                 }, 3000);
+            }
+        });
+
+        // 身份驗證狀態管理
+        function checkAuthStatus() {
+            fetch('/auth/status')
+                .then(response => response.json())
+                .then(data => {
+                    const authStatusItem = document.getElementById('authStatusItem');
+                    const logoutItem = document.getElementById('logoutItem');
+
+                    if (data.passcode_required && data.authenticated) {
+                        // 顯示認證狀態和登出按鈕
+                        if (authStatusItem) authStatusItem.style.display = 'block';
+                        if (logoutItem) logoutItem.style.display = 'block';
+
+                        // 更新身份驗證狀態顯示
+                        updateAuthDisplay(data.session_info);
+                    } else {
+                        // 隱藏認證相關UI
+                        if (authStatusItem) authStatusItem.style.display = 'none';
+                        if (logoutItem) logoutItem.style.display = 'none';
+                    }
+                })
+                .catch(error => {
+                    console.warn('檢查身份驗證狀態失敗:', error);
+                });
+        }
+
+        function updateAuthDisplay(sessionInfo) {
+            const authStatusItem = document.getElementById('authStatusItem');
+            if (!authStatusItem || !sessionInfo) return;
+
+            const statusSpan = authStatusItem.querySelector('span');
+            if (!statusSpan) return;
+
+            let statusHTML = '<i class="bi bi-shield-check text-success"></i>';
+
+            if (sessionInfo.time_remaining_minutes !== undefined) {
+                const hours = Math.floor(sessionInfo.time_remaining_minutes / 60);
+                const minutes = sessionInfo.time_remaining_minutes % 60;
+
+                let timeText = '';
+                if (hours > 0) {
+                    timeText = `${hours}小時`;
+                    if (minutes > 0) timeText += `${minutes}分`;
+                } else {
+                    timeText = `${minutes}分鐘`;
+                }
+
+                statusHTML += ` <small class="d-none d-lg-inline text-muted">(${timeText}後登出)</small>`;
+            } else {
+                statusHTML += ' <small class="d-none d-md-inline">已認證</small>';
+            }
+
+            statusSpan.innerHTML = statusHTML;
+        }
+
+        // 定期檢查身份驗證狀態
+        function startAuthStatusCheck() {
+            checkAuthStatus(); // 立即檢查一次
+
+            // 每30秒檢查一次
+            setInterval(checkAuthStatus, 30000);
+        }
+
+        // 頁面載入後開始檢查
+        startAuthStatusCheck();
+
+        // 監聽頁面可見性變化，當用戶回到頁面時檢查狀態
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden) {
+                checkAuthStatus();
             }
         });
     </script>
