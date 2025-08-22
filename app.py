@@ -50,6 +50,18 @@ def register_routes(app):
         app: Flask application instance
     """
 
+    # HTTPS Force Redirect
+    @app.before_request
+    def force_https():
+        """Force HTTPS redirect if enabled."""
+        from config.api_config import api_config
+
+        if (api_config.is_force_https() and
+            request.endpoint and
+            not request.is_secure and
+            request.headers.get('X-Forwarded-Proto', 'http') != 'https'):
+            return redirect(request.url.replace('http://', 'https://'))
+
     @app.route('/')
     @require_auth
     def index():
@@ -751,11 +763,102 @@ def register_routes(app):
         """Handle 400 errors (including SSL handshake attempts)."""
         return "Bad Request", 400
 
+    @app.route('/settings/server', methods=['GET', 'POST'])
+    @require_auth
+    def server_settings():
+        """
+        Handle server configuration.
+        GET: Display server settings form
+        POST: Process server settings updates
+        """
+        from config.api_config import api_config
+
+        if request.method == 'POST':
+            try:
+                # Get form data
+                https_enabled = request.form.get('https_enabled') == '1'
+                host = request.form.get('host', '0.0.0.0').strip()
+                port = int(request.form.get('port', 8080))
+                cert_file = request.form.get('cert_file', 'certs/cert.pem').strip()
+                key_file = request.form.get('key_file', 'certs/key.pem').strip()
+                force_https = request.form.get('force_https') == '1'
+
+                # Validate inputs
+                if port < 1 or port > 65535:
+                    flash('連接埠必須在 1-65535 之間', 'error')
+                    return redirect(url_for('server_settings'))
+
+                if not cert_file or not key_file:
+                    flash('請輸入憑證檔案路徑', 'error')
+                    return redirect(url_for('server_settings'))
+
+                # Update server settings
+                api_config.set_https_enabled(https_enabled)
+                api_config.set_server_host(host)
+                api_config.set_server_port(port)
+                api_config.set_cert_file(cert_file)
+                api_config.set_key_file(key_file)
+                api_config.set_force_https(force_https)
+
+                flash('伺服器設定已儲存', 'success')
+
+                # Note about restart requirement
+                if https_enabled:
+                    flash('HTTPS 設定已更新，請重新啟動伺服器以生效', 'info')
+
+            except ValueError as e:
+                flash(f'設定錯誤: {str(e)}', 'error')
+            except Exception as e:
+                flash(f'儲存設定時發生錯誤: {str(e)}', 'error')
+
+            return redirect(url_for('server_settings'))
+
+        # GET request - show form
+        status = api_config.get_status_summary()
+        return render_template('server_settings.html', status=status)
+
 
 # Application instance
 app = create_app()
 
 
 if __name__ == '__main__':
-    # Development server configuration
-    app.run(debug=True, host='127.0.0.1', port=8080)
+    from config.api_config import api_config
+
+    # Get server configuration
+    host = api_config.get_server_host()
+    port = api_config.get_server_port()
+
+    # Check for SSL certificate files
+    ssl_context = api_config.get_ssl_context()
+
+    if ssl_context and api_config.is_https_enabled():
+        print(f"🔐 SSL憑證已載入 - HTTPS 伺服器啟動")
+        print(f"📁 憑證位置: {ssl_context[0]}")
+        print(f"🔑 私鑰位置: {ssl_context[1]}")
+        if api_config.is_force_https():
+            print(f"🔒 已啟用強制 HTTPS 重新導向")
+    else:
+        ssl_context = None
+        if api_config.is_https_enabled():
+            print("⚠️  HTTPS 已啟用但 SSL憑證檔案不存在，使用 HTTP 模式")
+            ssl_validation = api_config.validate_ssl_certificates()
+            print(f"💡 請將憑證檔案放在: {ssl_validation['cert_file']}")
+            print(f"💡 請將私鑰檔案放在: {ssl_validation['key_file']}")
+        else:
+            print("ℹ️  HTTPS 功能已停用，使用 HTTP 模式")
+
+    # Override port with environment variable if available
+    port = int(os.environ.get('PORT', port))
+
+    if ssl_context:
+        print(f"🚀 伺服器啟動於 https://{host}:{port}")
+    else:
+        print(f"🚀 伺服器啟動於 http://{host}:{port}")
+
+    app.run(
+        debug=True,
+        host=host,
+        port=port,
+        ssl_context=ssl_context
+    )

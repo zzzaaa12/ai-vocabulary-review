@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+
+{% block title %}伺服器設定 - 英文單字筆記本{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-server me-2"></i>伺服器設定</h2>
+                <a href="{{ url_for('settings') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-1"></i>返回設定
+                </a>
+            </div>
+
+            <!-- Server Status Card -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>伺服器狀態</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>目前主機:</strong> <code>{{ status.server.host }}</code></p>
+                            <p><strong>目前連接埠:</strong> <code>{{ status.server.port }}</code></p>
+                            <p><strong>HTTPS 狀態:</strong>
+                                {% if status.server.https_enabled %}
+                                    <span class="badge bg-success">已啟用</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">已停用</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>SSL 憑證:</strong>
+                                {% if status.server.cert_exists %}
+                                    <span class="badge bg-success">已找到</span>
+                                {% else %}
+                                    <span class="badge bg-warning">未找到</span>
+                                {% endif %}
+                            </p>
+                            <p><strong>SSL 私鑰:</strong>
+                                {% if status.server.key_exists %}
+                                    <span class="badge bg-success">已找到</span>
+                                {% else %}
+                                    <span class="badge bg-warning">未找到</span>
+                                {% endif %}
+                            </p>
+                            <p><strong>強制 HTTPS:</strong>
+                                {% if status.server.force_https %}
+                                    <span class="badge bg-success">已啟用</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">已停用</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+
+                    {% if status.server.https_enabled and not status.server.ssl_configured %}
+                    <div class="alert alert-warning mt-3">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>注意:</strong> HTTPS 已啟用但 SSL 憑證檔案不存在或無法讀取。
+                        請確保憑證檔案位於正確位置並且可讀取。
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Server Configuration Form -->
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-cog me-2"></i>伺服器配置</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <!-- HTTPS Settings -->
+                        <div class="mb-4">
+                            <h6 class="text-primary"><i class="fas fa-lock me-2"></i>HTTPS 設定</h6>
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="https_enabled" name="https_enabled" value="1"
+                                       {% if status.server.https_enabled %}checked{% endif %}>
+                                <label class="form-check-label" for="https_enabled">
+                                    啟用 HTTPS
+                                </label>
+                                <div class="form-text">啟用後伺服器將使用 SSL/TLS 加密連線</div>
+                            </div>
+
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="force_https" name="force_https" value="1"
+                                       {% if status.server.force_https %}checked{% endif %}>
+                                <label class="form-check-label" for="force_https">
+                                    強制 HTTPS 重新導向
+                                </label>
+                                <div class="form-text">將所有 HTTP 請求自動重新導向到 HTTPS</div>
+                            </div>
+                        </div>
+
+                        <!-- Network Settings -->
+                        <div class="mb-4">
+                            <h6 class="text-primary"><i class="fas fa-network-wired me-2"></i>網路設定</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="host" class="form-label">主機位址</label>
+                                        <input type="text" class="form-control" id="host" name="host"
+                                               value="{{ status.server.host }}" required>
+                                        <div class="form-text">
+                                            使用 0.0.0.0 監聽所有網路介面，127.0.0.1 僅監聽本機
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="port" class="form-label">連接埠</label>
+                                        <input type="number" class="form-control" id="port" name="port"
+                                               value="{{ status.server.port }}" min="1" max="65535" required>
+                                        <div class="form-text">
+                                            建議使用 8080 (HTTP) 或 8443 (HTTPS)
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- SSL Certificate Settings -->
+                        <div class="mb-4">
+                            <h6 class="text-primary"><i class="fas fa-certificate me-2"></i>SSL 憑證設定</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="cert_file" class="form-label">憑證檔案路徑</label>
+                                        <input type="text" class="form-control" id="cert_file" name="cert_file"
+                                               value="{{ status.server.cert_file }}" required>
+                                        <div class="form-text">
+                                            SSL 憑證檔案 (.pem 或 .crt)
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="key_file" class="form-label">私鑰檔案路徑</label>
+                                        <input type="text" class="form-control" id="key_file" name="key_file"
+                                               value="{{ status.server.key_file }}" required>
+                                        <div class="form-text">
+                                            SSL 私鑰檔案 (.pem 或 .key)
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>提示:</strong> 憑證檔案可以使用相對路徑 (相對於專案根目錄) 或絕對路徑。
+                                建議將憑證檔案放在 <code>certs/</code> 目錄下。
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-save me-1"></i>儲存設定
+                            </button>
+                            <div class="text-muted small">
+                                <i class="fas fa-exclamation-triangle me-1"></i>
+                                變更 HTTPS 設定後需要重新啟動伺服器
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- SSL Certificate Help -->
+            <div class="card mt-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-question-circle me-2"></i>SSL 憑證說明</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>生成自簽名憑證 (測試用)</h6>
+                            <p>在 <code>certs/</code> 目錄中執行以下命令:</p>
+                            <pre class="bg-light p-2 rounded"><code>openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes</code></pre>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>使用 Let's Encrypt 憑證</h6>
+                            <p>如果您有 Let's Encrypt 憑證，請將檔案複製到:</p>
+                            <ul>
+                                <li><code>certs/cert.pem</code> (憑證檔案)</li>
+                                <li><code>certs/key.pem</code> (私鑰檔案)</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-warning mt-3">
+                        <i class="fas fa-shield-alt me-2"></i>
+                        <strong>安全提醒:</strong> 請確保私鑰檔案的權限設定正確 (僅擁有者可讀取)，並且不要將私鑰檔案提交到版本控制系統中。
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Toggle force HTTPS based on HTTPS enabled
+document.getElementById('https_enabled').addEventListener('change', function() {
+    const forceHttps = document.getElementById('force_https');
+    if (!this.checked) {
+        forceHttps.checked = false;
+        forceHttps.disabled = true;
+    } else {
+        forceHttps.disabled = false;
+    }
+});
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const httpsEnabled = document.getElementById('https_enabled');
+    const forceHttps = document.getElementById('force_https');
+
+    if (!httpsEnabled.checked) {
+        forceHttps.disabled = true;
+    }
+});
+</script>
+{% endblock %}

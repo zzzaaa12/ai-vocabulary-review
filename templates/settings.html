@@ -149,7 +149,59 @@
         </div>
     </div>
 
-    <!-- 其他設定卡片 -->
+    <!-- 伺服器設定卡片 -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-server"></i> 伺服器設定
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="card-text">配置伺服器網路設定和 HTTPS 安全連線。</p>
+
+                <!-- 伺服器狀態 -->
+                <div class="mb-3">
+                    <h6>
+                        <span class="status-indicator {{ 'status-success' if status.server.https_enabled else 'status-warning' }}"></span>
+                        HTTPS 加密
+                    </h6>
+                    <small class="text-muted">
+                        {% if status.server.https_enabled %}
+                            已啟用
+                            {% if status.server.ssl_configured %}
+                                <span class="badge bg-success status-badge">SSL 已配置</span>
+                            {% else %}
+                                <span class="badge bg-warning status-badge">憑證缺失</span>
+                            {% endif %}
+                        {% else %}
+                            已停用
+                            <span class="badge bg-secondary status-badge">HTTP 模式</span>
+                        {% endif %}
+                    </small>
+                </div>
+
+                <!-- 網路設定 -->
+                <div class="mb-3">
+                    <h6>網路設定</h6>
+                    <small class="text-muted">
+                        主機: {{ status.server.host }}<br>
+                        連接埠: {{ status.server.port }}<br>
+                        強制 HTTPS: {{ '已啟用' if status.server.force_https else '已停用' }}
+                    </small>
+                </div>
+            </div>
+            <div class="card-footer">
+                <a href="{{ url_for('server_settings') }}" class="btn btn-primary">
+                    <i class="bi bi-gear"></i> 伺服器設定
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- 資料管理卡片 -->
     <div class="col-md-6 mb-4">
         <div class="card h-100">
             <div class="card-header">

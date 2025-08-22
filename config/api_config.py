@@ -4,7 +4,7 @@ API configuration management for AI services.
 
 import os
 import json
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 from pathlib import Path
 from cryptography.fernet import Fernet
 import base64
@@ -95,12 +95,31 @@ class APIConfigManager:
                     "auto_logout_enabled": True,
                     "auto_logout_hours": 24,
                     "max_failed_attempts": 5
+                },
+                "server": {
+                    "https_enabled": True,
+                    "host": "0.0.0.0",
+                    "port": 8080,
+                    "cert_file": "certs/cert.pem",
+                    "key_file": "certs/key.pem",
+                    "force_https": False
                 }
             }
 
         try:
             with open(self.config_file, 'r', encoding='utf-8') as f:
-                return json.load(f)
+                config = json.load(f)
+                # Add server config if it doesn't exist (for backwards compatibility)
+                if "server" not in config:
+                    config["server"] = {
+                        "https_enabled": True,
+                        "host": "0.0.0.0",
+                        "port": 8080,
+                        "cert_file": "certs/cert.pem",
+                        "key_file": "certs/key.pem",
+                        "force_https": False
+                    }
+                return config
         except (json.JSONDecodeError, FileNotFoundError):
             return self._load_config()  # Return default config
 
@@ -379,6 +398,151 @@ class APIConfigManager:
         """Get maximum failed attempts."""
         return self.config.get("auth", {}).get("max_failed_attempts", 5)
 
+    # SSL/HTTPS Configuration Methods
+
+    def set_https_enabled(self, enabled: bool) -> None:
+        """
+        Set HTTPS enabled state.
+
+        Args:
+            enabled: Whether HTTPS is enabled
+        """
+        if "server" not in self.config:
+            self.config["server"] = {}
+        self.config["server"]["https_enabled"] = enabled
+        self._save_config()
+
+    def is_https_enabled(self) -> bool:
+        """Check if HTTPS is enabled."""
+        return self.config.get("server", {}).get("https_enabled", True)
+
+    def set_server_host(self, host: str) -> None:
+        """
+        Set server host.
+
+        Args:
+            host: Server host (e.g., '0.0.0.0', '127.0.0.1')
+        """
+        if "server" not in self.config:
+            self.config["server"] = {}
+        self.config["server"]["host"] = host
+        self._save_config()
+
+    def get_server_host(self) -> str:
+        """Get server host."""
+        return self.config.get("server", {}).get("host", "0.0.0.0")
+
+    def set_server_port(self, port: int) -> None:
+        """
+        Set server port.
+
+        Args:
+            port: Server port number
+        """
+        if "server" not in self.config:
+            self.config["server"] = {}
+        self.config["server"]["port"] = max(1, min(65535, port))
+        self._save_config()
+
+    def get_server_port(self) -> int:
+        """Get server port."""
+        return self.config.get("server", {}).get("port", 8080)
+
+    def set_cert_file(self, cert_file: str) -> None:
+        """
+        Set SSL certificate file path.
+
+        Args:
+            cert_file: Path to SSL certificate file
+        """
+        if "server" not in self.config:
+            self.config["server"] = {}
+        self.config["server"]["cert_file"] = cert_file
+        self._save_config()
+
+    def get_cert_file(self) -> str:
+        """Get SSL certificate file path."""
+        return self.config.get("server", {}).get("cert_file", "certs/cert.pem")
+
+    def set_key_file(self, key_file: str) -> None:
+        """
+        Set SSL private key file path.
+
+        Args:
+            key_file: Path to SSL private key file
+        """
+        if "server" not in self.config:
+            self.config["server"] = {}
+        self.config["server"]["key_file"] = key_file
+        self._save_config()
+
+    def get_key_file(self) -> str:
+        """Get SSL private key file path."""
+        return self.config.get("server", {}).get("key_file", "certs/key.pem")
+
+    def set_force_https(self, force: bool) -> None:
+        """
+        Set force HTTPS redirect.
+
+        Args:
+            force: Whether to force HTTPS redirect
+        """
+        if "server" not in self.config:
+            self.config["server"] = {}
+        self.config["server"]["force_https"] = force
+        self._save_config()
+
+    def is_force_https(self) -> bool:
+        """Check if force HTTPS redirect is enabled."""
+        return self.config.get("server", {}).get("force_https", False)
+
+    def get_ssl_context(self) -> Optional[Tuple[str, str]]:
+        """
+        Get SSL context for Flask app.
+
+        Returns:
+            Tuple of (cert_file, key_file) if both exist, None otherwise
+        """
+        if not self.is_https_enabled():
+            return None
+
+        cert_file = self.get_cert_file()
+        key_file = self.get_key_file()
+
+        # Convert relative paths to absolute paths
+        if not os.path.isabs(cert_file):
+            cert_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), cert_file)
+        if not os.path.isabs(key_file):
+            key_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), key_file)
+
+        if os.path.exists(cert_file) and os.path.exists(key_file):
+            return (cert_file, key_file)
+
+        return None
+
+    def validate_ssl_certificates(self) -> Dict[str, bool]:
+        """
+        Validate SSL certificate files.
+
+        Returns:
+            Dictionary with validation results
+        """
+        cert_file = self.get_cert_file()
+        key_file = self.get_key_file()
+
+        # Convert relative paths to absolute paths
+        if not os.path.isabs(cert_file):
+            cert_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), cert_file)
+        if not os.path.isabs(key_file):
+            key_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), key_file)
+
+        return {
+            "cert_exists": os.path.exists(cert_file),
+            "key_exists": os.path.exists(key_file),
+            "cert_file": cert_file,
+            "key_file": key_file
+        }
+
     def export_config(self, include_keys: bool = False) -> Dict:
         """
         Export configuration.
@@ -414,6 +578,7 @@ class APIConfigManager:
         """
         validation = self.validate_api_keys()
         available_providers = self.get_available_providers()
+        ssl_validation = self.validate_ssl_certificates()
 
         return {
             "openai": {
@@ -439,6 +604,17 @@ class APIConfigManager:
                 "auto_logout_enabled": self.is_auto_logout_enabled(),
                 "auto_logout_hours": self.get_auto_logout_hours(),
                 "max_failed_attempts": self.get_max_failed_attempts()
+            },
+            "server": {
+                "https_enabled": self.is_https_enabled(),
+                "host": self.get_server_host(),
+                "port": self.get_server_port(),
+                "cert_file": self.get_cert_file(),
+                "key_file": self.get_key_file(),
+                "force_https": self.is_force_https(),
+                "ssl_configured": ssl_validation["cert_exists"] and ssl_validation["key_exists"],
+                "cert_exists": ssl_validation["cert_exists"],
+                "key_exists": ssl_validation["key_exists"]
             }
         }
 

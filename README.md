@@ -26,10 +26,14 @@ python -m venv .venv
 # 2) （可選）設定 AI API（OpenAI / Google Gemini）
 python config/setup_api.py
 
-# 3) 啟動開發伺服器
+# 3) （可選）生成 SSL 憑證以啟用 HTTPS
+python scripts/generate_ssl_cert.py
+
+# 4) 啟動開發伺服器
 $env:FLASK_APP='app.py'
 .\.venv\Scripts\python.exe app.py
-# 瀏覽 http://127.0.0.1:8080
+# HTTP 模式: http://0.0.0.0:8080
+# HTTPS 模式: https://0.0.0.0:8080 (如有 SSL 憑證)
 ```
 
 ## 使用說明
@@ -79,9 +83,34 @@ mydict_webapp_0820_cursor/
 python -m pytest -q
 ```
 
+## HTTPS 支援
+本專案內建 HTTPS 支援，提供安全的加密連線。
+
+### SSL 憑證設定
+1. **自動生成自簽名憑證（開發/測試）**：
+   ```bash
+   python scripts/generate_ssl_cert.py
+   ```
+
+2. **使用現有憑證**：
+   - 將憑證檔案放在 `certs/cert.pem`
+   - 將私鑰檔案放在 `certs/key.pem`
+
+3. **伺服器設定**：
+   - 訪問 `/settings/server` 進行 HTTPS 配置
+   - 支援自訂主機位址、連接埠、憑證路徑
+   - 可啟用強制 HTTPS 重新導向
+
+### 安全功能
+- SSL/TLS 加密連線
+- 強制 HTTPS 重新導向
+- 支援監聽 0.0.0.0（所有網路介面）
+- 憑證檔案自動檢測與驗證
+
 ## 部署（簡易）
 - 使用反向代理（Nginx）與生產 WSGI（gunicorn/waitress 等）啟動
 - 設定環境變數 `SECRET_KEY`，確保 `config/` 下的金鑰與設定檔具備寫入權限
+- 生產環境建議使用受信任的 CA 憑證（如 Let's Encrypt）
 
 ## 授權 License
 MIT License，詳見 `LICENSE`。
