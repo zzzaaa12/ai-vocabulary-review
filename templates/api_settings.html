@@ -127,6 +127,7 @@
                 </div>
 
                 <div id="openai-test-result" class="test-result"></div>
+                <div id="openai-validation-result" class="test-result"></div>
             </div>
 
             <!-- Gemini 設定 -->
@@ -190,6 +191,7 @@
                 </div>
 
                 <div id="gemini-test-result" class="test-result"></div>
+                <div id="gemini-validation-result" class="test-result"></div>
             </div>
 
             <!-- 一般設定 -->
@@ -309,18 +311,31 @@
 function testConnection(provider) {
     const button = document.querySelector(`button[onclick="testConnection('${provider}')"]`);
     const resultDiv = document.getElementById(`${provider}-test-result`);
+    const apiKeyInput = document.getElementById(`${provider}_key`);
+
+    // 取得當前輸入的 API Key
+    let apiKey = apiKeyInput.value.trim();
+
+    // 如果輸入框是預設的遮罩值，則清空 (表示要使用已儲存的 key)
+    if (apiKey === '••••••••••••••••') {
+        apiKey = '';
+    }
 
     // 顯示載入狀態
     button.innerHTML = '<i class="bi bi-hourglass-split"></i> 測試中...';
     button.disabled = true;
 
+    // 準備請求資料
+    const formData = new FormData();
+    formData.append('provider', provider);
+    if (apiKey) {
+        formData.append('api_key', apiKey);
+    }
+
     // 發送測試請求
     fetch('{{ url_for("test_api_connection") }}', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: `provider=${provider}`
+        body: formData
     })
     .then(response => response.json())
     .then(data => {
@@ -334,12 +349,12 @@ function testConnection(provider) {
 
         // 恢復按鈕
         button.innerHTML = '<i class="bi bi-wifi"></i> 測試連線';
-        button.disabled = false;
+        updateTestButtonState(provider);
 
-        // 3秒後隱藏結果
+        // 5秒後隱藏結果
         setTimeout(() => {
             resultDiv.style.display = 'none';
-        }, 3000);
+        }, 5000);
     })
     .catch(error => {
         // 錯誤處理
@@ -352,8 +367,67 @@ function testConnection(provider) {
 
         // 恢復按鈕
         button.innerHTML = '<i class="bi bi-wifi"></i> 測試連線';
-        button.disabled = false;
+        updateTestButtonState(provider);
     });
+}
+
+// 更新測試按鈕狀態
+function updateTestButtonState(provider) {
+    const button = document.querySelector(`button[onclick="testConnection('${provider}')"]`);
+    const apiKeyInput = document.getElementById(`${provider}_key`);
+    const apiKey = apiKeyInput.value.trim();
+
+    // 如果有 API Key 值且不是預設遮罩，或者已經有配置的 key，則啟用按鈕
+    const hasValidKey = apiKey && apiKey !== '' && apiKey !== '••••••••••••••••';
+    const hasConfiguredKey = apiKey === '••••••••••••••••';
+
+    button.disabled = !(hasValidKey || hasConfiguredKey);
+}
+
+// 驗證 API Key 格式
+function validateApiKeyFormat(provider, apiKey) {
+    if (!apiKey || apiKey === '••••••••••••••••') {
+        return { valid: true, message: '' }; // 空值或遮罩值是可以的
+    }
+
+    if (provider === 'openai') {
+        if (!apiKey.startsWith('sk-')) {
+            return { valid: false, message: 'OpenAI API Key 應以 "sk-" 開頭' };
+        }
+        if (apiKey.length < 20) {
+            return { valid: false, message: 'OpenAI API Key 長度不足' };
+        }
+    } else if (provider === 'gemini') {
+        if (!apiKey.startsWith('AIzaSy')) {
+            return { valid: false, message: 'Gemini API Key 應以 "AIzaSy" 開頭' };
+        }
+        if (apiKey.length !== 39) {
+            return { valid: false, message: `Gemini API Key 長度應為39字符，目前為${apiKey.length}字符` };
+        }
+    }
+
+    return { valid: true, message: '' };
+}
+
+// 顯示即時驗證結果
+function showValidationResult(provider, validation) {
+    const validationDiv = document.getElementById(`${provider}-validation-result`);
+    if (!validationDiv) return;
+
+    if (!validation.valid) {
+        validationDiv.className = 'test-result test-error';
+        validationDiv.innerHTML = `
+            <i class="bi bi-exclamation-triangle"></i>
+            ${validation.message}
+        `;
+        validationDiv.style.display = 'block';
+
+        setTimeout(() => {
+            validationDiv.style.display = 'none';
+        }, 3000);
+    } else {
+        validationDiv.style.display = 'none';
+    }
 }
 
 function clearApiKey(provider) {
@@ -397,6 +471,51 @@ document.querySelectorAll('input[type="password"]').forEach(input => {
 
     container.style.position = 'relative';
     container.appendChild(toggleButton);
+});
+
+// 初始化：為所有 API Key 輸入框添加事件監聽器
+document.addEventListener('DOMContentLoaded', function() {
+    ['openai', 'gemini'].forEach(provider => {
+        const apiKeyInput = document.getElementById(`${provider}_key`);
+        const button = document.querySelector(`button[onclick="testConnection('${provider}')"]`);
+
+        if (apiKeyInput && button) {
+            // 初始化按鈕狀態
+            updateTestButtonState(provider);
+
+            // 當輸入框內容改變時
+            apiKeyInput.addEventListener('input', function() {
+                const apiKey = this.value.trim();
+
+                // 更新測試按鈕狀態
+                updateTestButtonState(provider);
+
+                // 即時格式驗證 (但不要太頻繁)
+                if (apiKey && apiKey !== '••••••••••••••••') {
+                    const validation = validateApiKeyFormat(provider, apiKey);
+                    showValidationResult(provider, validation);
+                }
+            });
+
+            // 當輸入框失去焦點時進行詳細驗證
+            apiKeyInput.addEventListener('blur', function() {
+                const apiKey = this.value.trim();
+                if (apiKey && apiKey !== '••••••••••••••••') {
+                    const validation = validateApiKeyFormat(provider, apiKey);
+                    showValidationResult(provider, validation);
+                }
+            });
+
+            // 當輸入框獲得焦點且是遮罩值時，清空輸入框
+            apiKeyInput.addEventListener('focus', function() {
+                if (this.value === '••••••••••••••••') {
+                    this.value = '';
+                    this.placeholder = provider === 'openai' ? 'sk-...' : 'AIzaSy...';
+                    updateTestButtonState(provider);
+                }
+            });
+        }
+    });
 });
 </script>
 {% endblock %}

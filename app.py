@@ -6,6 +6,7 @@ Main application entry point with route definitions.
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
 from datetime import datetime
 import os
+import asyncio
 
 # Import our models and services
 from models import Word, VocabularyData
@@ -469,13 +470,30 @@ def register_routes(app):
         from services.ai_service_tester import AIServiceTester
 
         provider = request.form.get('provider')
+        temp_api_key = request.form.get('api_key')  # 支援臨時 API key
 
         if provider not in ['openai', 'gemini']:
             return jsonify({'success': False, 'message': '無效的提供商'})
 
         try:
-            # Test actual API connection
-            success, message = AIServiceTester.test_connection_sync(provider)
+            # If temp API key is provided, use it for testing
+            if temp_api_key:
+                # First validate format
+                format_valid, format_msg = AIServiceTester.validate_and_test_key(provider, temp_api_key)
+                if not format_valid:
+                    return jsonify({
+                        'success': False,
+                        'message': format_msg
+                    })
+
+                # Test connection with temp key
+                if provider == "openai":
+                    success, message = asyncio.run(AIServiceTester.test_openai_connection(temp_api_key))
+                else:  # gemini
+                    success, message = asyncio.run(AIServiceTester.test_gemini_connection(temp_api_key))
+            else:
+                # Use saved API key
+                success, message = AIServiceTester.test_connection_sync(provider)
 
             return jsonify({
                 'success': success,
