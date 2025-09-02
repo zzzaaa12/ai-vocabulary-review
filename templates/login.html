@@ -126,7 +126,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (passcodeInput.value.trim() === '') {
                 e.preventDefault();
-                alert('請輸入通行碼');
+                showWarning('請輸入通行碼');
                 passcodeInput.focus();
                 return;
             }

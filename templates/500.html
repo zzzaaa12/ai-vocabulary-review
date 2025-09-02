@@ -168,9 +168,9 @@ function reportError() {
 
     // 或者複製到剪貼板
     navigator.clipboard.writeText(JSON.stringify(errorInfo, null, 2)).then(() => {
-        alert('錯誤資訊已複製到剪貼板');
+        showSuccess('錯誤資訊已複製到剪貼板');
     }).catch(() => {
-        alert('無法複製錯誤資訊');
+        showError('無法複製錯誤資訊');
     });
 }
 

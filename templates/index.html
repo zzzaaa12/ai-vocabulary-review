@@ -857,7 +857,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // 快速儲存功能
 function saveQuickAiResult() {
     if (!window.currentQuickAiResult) {
-        alert('沒有可儲存的資料');
+        showWarning('沒有可儲存的資料');
         return;
     }
 
@@ -889,7 +889,7 @@ function saveQuickAiResult() {
             bootstrap.Modal.getInstance(document.getElementById('quickAiResultModal')).hide();
 
             // 顯示成功訊息並重新載入頁面
-            alert('單字儲存成功！');
+            showSuccess('單字儲存成功！');
             window.location.reload();
         } else {
             throw new Error('儲存失敗');
@@ -897,7 +897,7 @@ function saveQuickAiResult() {
     })
     .catch(error => {
         console.error('儲存錯誤:', error);
-        alert('儲存失敗，請重試');
+        showError('儲存失敗，請重試');
     })
     .finally(() => {
         // 恢復按鈕

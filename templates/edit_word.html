@@ -175,8 +175,9 @@ document.getElementById('editWordForm').addEventListener('submit', function() {
 });
 
 // 重設按鈕處理
-document.querySelector('button[type="reset"]').addEventListener('click', function() {
-    if (confirm('確定要重設所有欄位嗎？這會恢復到原始值。')) {
+document.querySelector('button[type="reset"]').addEventListener('click', async function() {
+    const confirmed = await showConfirm('確定要重設所有欄位嗎？這會恢復到原始值。', '確認重設');
+    if (confirmed) {
         // 重設表單到原始值
         document.getElementById('word').value = '{{ word.word }}';
         document.getElementById('chinese_meaning').value = '{{ word.chinese_meaning }}';
@@ -213,10 +214,12 @@ window.addEventListener('beforeunload', function(e) {
 });
 
 // 取消按鈕確認
-document.querySelector('a[href*="word_detail"]').addEventListener('click', function(e) {
+document.querySelector('a[href*="word_detail"]').addEventListener('click', async function(e) {
     if (hasChanges) {
-        if (!confirm('您有未儲存的變更，確定要離開嗎？')) {
-            e.preventDefault();
+        e.preventDefault();
+        const confirmed = await showConfirm('您有未儲存的變更，確定要離開嗎？', '確認離開');
+        if (confirmed) {
+            window.location.href = this.href;
         }
     }
 });

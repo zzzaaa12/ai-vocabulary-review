@@ -235,7 +235,7 @@ document.getElementById('aiGenerateBtn').addEventListener('click', function() {
     const word = document.getElementById('word').value.trim();
 
     if (!word) {
-        alert('請先輸入英文單字');
+        showWarning('請先輸入英文單字');
         return;
     }
 
@@ -387,7 +387,7 @@ document.getElementById('acceptAiResult').addEventListener('click', function() {
 // 直接儲存 AI 結果
 document.getElementById('saveAiResult').addEventListener('click', function() {
     if (!window.currentAiResult) {
-        alert('沒有可儲存的資料');
+        showWarning('沒有可儲存的資料');
         return;
     }
 
@@ -419,7 +419,7 @@ document.getElementById('saveAiResult').addEventListener('click', function() {
             bootstrap.Modal.getInstance(document.getElementById('aiResultModal')).hide();
 
             // 顯示成功訊息並跳轉到首頁
-            alert('單字儲存成功！');
+            showSuccess('單字儲存成功！');
             window.location.href = '/';
         } else {
             throw new Error('儲存失敗');
@@ -427,7 +427,7 @@ document.getElementById('saveAiResult').addEventListener('click', function() {
     })
     .catch(error => {
         console.error('儲存錯誤:', error);
-        alert('儲存失敗，請重試');
+        showError('儲存失敗，請重試');
     })
     .finally(() => {
         // 恢復按鈕
