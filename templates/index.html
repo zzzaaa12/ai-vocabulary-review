@@ -379,9 +379,14 @@
             </div>
             <div class="card-body">
                 <div class="d-grid gap-2">
-                    <a href="{{ url_for('add_word') }}" class="btn btn-primary">
-                        <i class="bi bi-plus-circle"></i> 新增單字
-                    </a>
+                    <div class="btn-group w-100" role="group">
+                        <a href="{{ url_for('add_word') }}" class="btn btn-primary">
+                            <i class="bi bi-plus-circle"></i> 新增單字
+                        </a>
+                        <a href="{{ url_for('batch_add_words') }}" class="btn btn-outline-primary">
+                            <i class="bi bi-plus-square"></i> 批次新增
+                        </a>
+                    </div>
                     <a href="{{ url_for('api_settings') }}" class="btn btn-outline-primary">
                         <i class="bi bi-robot"></i> 設定 AI
                     </a>

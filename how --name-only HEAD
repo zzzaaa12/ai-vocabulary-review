@@ -1,0 +1,9 @@
+ static/js/notification-system.js | 245 [32m+++++++++++++++++++++++++++++++++++++++[m
+ templates/500.html               |   4 [32m+[m[31m-[m
+ templates/add_word.html          |   8 [32m+[m[31m-[m
+ templates/base.html              |  13 [32m++[m[31m-[m
+ templates/edit_word.html         |  13 [32m++[m[31m-[m
+ templates/index.html             |   6 [32m+[m[31m-[m
+ templates/login.html             |   2 [32m+[m[31m-[m
+ templates/notification_demo.html | 157 [32m+++++++++++++++++++++++++[m
+ 8 files changed, 432 insertions(+), 16 deletions(-)

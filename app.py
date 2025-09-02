@@ -189,6 +189,111 @@ def register_routes(app):
 
         return render_template('add_word.html')
 
+    @app.route('/batch-add', methods=['GET'])
+    @require_auth
+    def batch_add_words():
+        """
+        Display batch add words page.
+        """
+        return render_template('batch_add.html')
+
+    @app.route('/api/batch-add-words', methods=['POST'])
+    @require_auth_api
+    def api_batch_add_words():
+        """
+        Handle batch adding multiple words via API.
+        """
+        try:
+            data = request.get_json()
+            if not data or 'words' not in data:
+                return jsonify({'success': False, 'message': '無效的請求資料'}), 400
+
+            words_data = data['words']
+            if not isinstance(words_data, list):
+                return jsonify({'success': False, 'message': '單字資料必須是陣列格式'}), 400
+
+            if len(words_data) == 0:
+                return jsonify({'success': False, 'message': '沒有提供單字資料'}), 400
+
+            if len(words_data) > 50:  # 安全限制
+                return jsonify({'success': False, 'message': '單次最多只能新增50個單字'}), 400
+
+            added_count = 0
+            errors = []
+
+            for word_data in words_data:
+                try:
+                    # 驗證必要欄位
+                    if not word_data.get('word'):
+                        errors.append(f'單字資料缺少必要欄位: word')
+                        continue
+
+                    if not word_data.get('chinese_meaning'):
+                        errors.append(f'單字「{word_data.get("word", "未知")}」缺少中文翻譯')
+                        continue
+
+                    # 檢查是否已存在
+                    existing_word = app.vocabulary_service.get_word_by_text(word_data['word'])
+                    if existing_word:
+                        errors.append(f'單字「{word_data["word"]}」已存在')
+                        continue
+
+                    # 處理同義詞和反義詞
+                    synonyms = []
+                    antonyms = []
+                    
+                    if word_data.get('synonyms'):
+                        if isinstance(word_data['synonyms'], str):
+                            synonyms = [s.strip() for s in word_data['synonyms'].split(',') if s.strip()]
+                        elif isinstance(word_data['synonyms'], list):
+                            synonyms = word_data['synonyms']
+
+                    if word_data.get('antonyms'):
+                        if isinstance(word_data['antonyms'], str):
+                            antonyms = [a.strip() for a in word_data['antonyms'].split(',') if a.strip()]
+                        elif isinstance(word_data['antonyms'], list):
+                            antonyms = word_data['antonyms']
+
+                    # 創建 Word 物件
+                    from models.vocabulary import Word
+                    new_word = Word(
+                        word=word_data['word'].strip(),
+                        chinese_meaning=word_data['chinese_meaning'].strip(),
+                        english_meaning=word_data.get('english_meaning', '').strip(),
+                        phonetic=word_data.get('phonetic', '').strip(),
+                        example_sentence=word_data.get('example_sentence', '').strip(),
+                        synonyms=synonyms,
+                        antonyms=antonyms
+                    )
+
+                    # 儲存單字
+                    app.vocabulary_service.add_word(new_word)
+                    added_count += 1
+
+                except Exception as e:
+                    errors.append(f'新增單字「{word_data.get("word", "未知")}」時發生錯誤: {str(e)}')
+
+            # 準備回應
+            response_data = {
+                'success': True,
+                'added_count': added_count,
+                'total_count': len(words_data),
+                'errors': errors
+            }
+
+            if errors:
+                response_data['message'] = f'成功新增 {added_count} 個單字，{len(errors)} 個失敗'
+            else:
+                response_data['message'] = f'成功新增 {added_count} 個單字'
+
+            return jsonify(response_data)
+
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'message': f'批次新增失敗: {str(e)}'
+            }), 500
+
     @app.route('/edit/<word_id>', methods=['GET', 'POST'])
     @require_auth
     def edit_word(word_id):
@@ -505,6 +610,13 @@ def register_routes(app):
                 'success': False,
                 'message': f'測試連線時發生錯誤: {str(e)}'
             })
+
+    @app.route('/notification-demo')
+    def notification_demo():
+        """
+        通知系統演示頁面 (開發用)
+        """
+        return render_template('notification_demo.html')
 
     @app.route('/api/ai-status', methods=['GET'])
     @require_auth_api

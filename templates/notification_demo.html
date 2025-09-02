@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block title %}通知系統展示 - 英文單字筆記本{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">
+                <i class="bi bi-bell"></i> 新的通知系統展示
+            </h1>
+            
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i>
+                <strong>說明：</strong> 以下是新的通知系統，完全替代了容易被瀏覽器攔截的原生 alert() 和 confirm() 彈出框。
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-chat-dots"></i> Toast 通知測試
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">點擊按鈕測試不同類型的 Toast 通知：</p>
+                    
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-success" onclick="showSuccess('操作成功完成！')">
+                            <i class="bi bi-check-circle"></i> 成功通知
+                        </button>
+                        
+                        <button class="btn btn-danger" onclick="showError('發生錯誤，請重試')">
+                            <i class="bi bi-exclamation-triangle"></i> 錯誤通知
+                        </button>
+                        
+                        <button class="btn btn-warning" onclick="showWarning('請注意這個重要提醒')">
+                            <i class="bi bi-exclamation-circle"></i> 警告通知
+                        </button>
+                        
+                        <button class="btn btn-info" onclick="showInfo('這是一個資訊提示')">
+                            <i class="bi bi-info-circle"></i> 資訊通知
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-question-circle"></i> 確認對話框測試
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">點擊按鈕測試確認對話框：</p>
+                    
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-primary" onclick="testBasicConfirm()">
+                            <i class="bi bi-question"></i> 基本確認
+                        </button>
+                        
+                        <button class="btn btn-outline-danger" onclick="testDangerConfirm()">
+                            <i class="bi bi-trash"></i> 危險操作確認
+                        </button>
+                        
+                        <button class="btn btn-outline-info" onclick="testLoadingDemo()">
+                            <i class="bi bi-hourglass-split"></i> 載入中展示
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-code"></i> 使用說明
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <h6>Toast 通知：</h6>
+                    <pre><code>// 基本用法
+showSuccess('成功訊息');
+showError('錯誤訊息');
+showWarning('警告訊息');
+showInfo('資訊訊息');
+
+// 自訂顯示時間
+showSuccess('訊息', 5000); // 顯示5秒</code></pre>
+
+                    <h6 class="mt-4">確認對話框：</h6>
+                    <pre><code>// 基本確認
+const result = await showConfirm('確定要執行此操作嗎？');
+if (result) {
+    // 用戶點擊確認
+}
+
+// 危險操作確認
+const result = await notify.confirmDanger('確定要刪除嗎？');
+
+// 自訂標題和按鈕
+const result = await showConfirm(
+    '確定要繼續嗎？',
+    '自訂標題',
+    { okText: '繼續', okClass: 'btn-success' }
+);</code></pre>
+
+                    <h6 class="mt-4">載入中提示：</h6>
+                    <pre><code>const loading = showLoading('處理中...');
+// 執行操作...
+loading.hide(); // 隱藏載入提示</code></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function testBasicConfirm() {
+    const result = await showConfirm('這是一個基本的確認對話框。您要繼續嗎？', '基本確認');
+    if (result) {
+        showSuccess('您選擇了確認！');
+    } else {
+        showInfo('您選擇了取消。');
+    }
+}
+
+async function testDangerConfirm() {
+    const result = await notify.confirmDanger('這是一個危險操作的確認對話框。確定要刪除嗎？', '危險操作');
+    if (result) {
+        showError('假設執行了刪除操作（這只是演示）');
+    } else {
+        showInfo('取消了危險操作。');
+    }
+}
+
+function testLoadingDemo() {
+    const loading = showLoading('正在處理您的請求...');
+    
+    // 模擬異步操作
+    setTimeout(() => {
+        loading.hide();
+        showSuccess('操作完成！');
+    }, 3000);
+}
+</script>
+{% endblock %}

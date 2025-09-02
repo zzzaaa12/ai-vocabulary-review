@@ -215,6 +215,22 @@ class VocabularyService:
         vocab_data = self._load_data()
         return any(w.word.lower() == word.lower() for w in vocab_data.vocabulary)
 
+    def get_word_by_text(self, word: str) -> Optional[Word]:
+        """
+        Get a word by its text content.
+
+        Args:
+            word: The word text to search for
+
+        Returns:
+            Word object if found, None otherwise
+        """
+        vocab_data = self._load_data()
+        for w in vocab_data.vocabulary:
+            if w.word.lower() == word.lower():
+                return w
+        return None
+
     def search_words(self, query: str) -> List[Word]:
         """
         Search for words matching the query.

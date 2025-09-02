@@ -1,0 +1,592 @@
+{% extends "base.html" %}
+
+{% block title %}批次新增單字 - 英文單字筆記本{% endblock %}
+
+{% block extra_css %}
+<style>
+.batch-input-area {
+    min-height: 200px;
+    font-family: 'Courier New', monospace;
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
+.word-preview-card {
+    transition: all 0.3s ease;
+    border-left: 4px solid #0d6efd;
+}
+
+.word-preview-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.word-preview-card.error {
+    border-left-color: #dc3545;
+    background-color: #fff5f5;
+}
+
+.word-preview-card.success {
+    border-left-color: #198754;
+    background-color: #f0fff4;
+}
+
+.batch-settings {
+    background: #f8f9fa;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.word-count {
+    font-weight: 600;
+    color: #0d6efd;
+}
+
+.word-count.warning {
+    color: #ffc107;
+}
+
+.word-count.error {
+    color: #dc3545;
+}
+
+.processing-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.processing-content {
+    background: white;
+    padding: 2rem;
+    border-radius: 0.5rem;
+    text-align: center;
+    min-width: 300px;
+}
+
+.progress-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.progress-item:last-child {
+    border-bottom: none;
+}
+
+@media (max-width: 768px) {
+    .batch-input-area {
+        min-height: 150px;
+        font-size: 0.9rem;
+    }
+    
+    .batch-settings {
+        padding: 0.75rem;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>
+                <i class="bi bi-plus-square"></i> 批次新增單字
+            </h1>
+            <div class="btn-group">
+                <a href="{{ url_for('add_word') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-plus-circle"></i> 單個新增
+                </a>
+                <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> 返回首頁
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 設定面板 -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="batch-settings">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center gap-3">
+                        <label for="maxWords" class="form-label mb-0">單次限制：</label>
+                        <input type="number" class="form-control" id="maxWords" value="20" min="1" max="50" style="width: 80px;">
+                        <span class="text-muted">個單字</span>
+                    </div>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <span class="word-count" id="wordCount">0 / 20</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 輸入區域 -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-keyboard"></i> 輸入單字
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="form-floating mb-3">
+                    <textarea class="form-control batch-input-area" id="wordsInput" 
+                              placeholder="請輸入英文單字，用空格分隔，例如：apple banana orange cat dog"></textarea>
+                    <label for="wordsInput">
+                        <i class="bi bi-type"></i> 英文單字（用空格分隔）
+                    </label>
+                </div>
+                
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="text-muted">
+                        <i class="bi bi-info-circle"></i> 
+                        輸入單字後點擊「AI 查詢」，系統會自動獲取音標、中文翻譯等資訊
+                    </div>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-outline-secondary" id="clearBtn">
+                            <i class="bi bi-trash"></i> 清空
+                        </button>
+                        <button type="button" class="btn btn-primary" id="aiQueryBtn" disabled>
+                            <i class="bi bi-magic"></i> AI 查詢
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 預覽區域 -->
+<div class="row" id="previewSection" style="display: none;">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-eye"></i> 單字預覽
+                </h5>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-outline-warning" id="retryErrorsBtn" style="display: none;">
+                        <i class="bi bi-arrow-repeat"></i> 重試錯誤
+                    </button>
+                    <button type="button" class="btn btn-success" id="saveAllBtn" disabled>
+                        <i class="bi bi-check-lg"></i> 儲存全部
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="wordPreviewContainer">
+                    <!-- 動態生成單字預覽卡片 -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 處理中覆蓋層 -->
+<div class="processing-overlay" id="processingOverlay" style="display: none;">
+    <div class="processing-content">
+        <div class="mb-3">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">處理中...</span>
+            </div>
+        </div>
+        <h5 id="processingTitle">AI 查詢中...</h5>
+        <p class="text-muted mb-3" id="processingMessage">正在獲取單字資訊，請稍候</p>
+        <div class="progress mb-3">
+            <div class="progress-bar" id="processingProgress" style="width: 0%"></div>
+        </div>
+        <div id="processingDetails">
+            <!-- 動態顯示處理進度 -->
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 全域變數
+let maxWordsLimit = 20;
+let currentWords = [];
+let wordResults = {};
+let processingQueue = [];
+
+// 初始化
+document.addEventListener('DOMContentLoaded', function() {
+    setupEventListeners();
+    updateWordCount();
+});
+
+// 設定事件監聽器
+function setupEventListeners() {
+    document.getElementById('maxWords').addEventListener('change', updateMaxWords);
+    document.getElementById('wordsInput').addEventListener('input', handleWordsInput);
+    document.getElementById('clearBtn').addEventListener('click', clearInput);
+    document.getElementById('aiQueryBtn').addEventListener('click', startAIQuery);
+    document.getElementById('saveAllBtn').addEventListener('click', saveAllWords);
+    document.getElementById('retryErrorsBtn').addEventListener('click', retryErrors);
+}
+
+// 更新單字數量限制
+function updateMaxWords() {
+    const newLimit = parseInt(document.getElementById('maxWords').value);
+    if (newLimit >= 1 && newLimit <= 50) {
+        maxWordsLimit = newLimit;
+        updateWordCount();
+        validateInput();
+    }
+}
+
+// 處理單字輸入
+function handleWordsInput() {
+    const input = document.getElementById('wordsInput').value.trim();
+    currentWords = input ? input.split(/\s+/).filter(word => word.length > 0) : [];
+    
+    // 移除重複單字
+    currentWords = [...new Set(currentWords.map(word => word.toLowerCase()))];
+    
+    updateWordCount();
+    validateInput();
+}
+
+// 更新單字計數顯示
+function updateWordCount() {
+    const countElement = document.getElementById('wordCount');
+    const count = currentWords.length;
+    
+    countElement.textContent = `${count} / ${maxWordsLimit}`;
+    
+    if (count === 0) {
+        countElement.className = 'word-count';
+    } else if (count > maxWordsLimit) {
+        countElement.className = 'word-count error';
+    } else if (count > maxWordsLimit * 0.8) {
+        countElement.className = 'word-count warning';
+    } else {
+        countElement.className = 'word-count';
+    }
+}
+
+// 驗證輸入
+function validateInput() {
+    const aiQueryBtn = document.getElementById('aiQueryBtn');
+    const isValid = currentWords.length > 0 && currentWords.length <= maxWordsLimit;
+    
+    aiQueryBtn.disabled = !isValid;
+    
+    if (currentWords.length > maxWordsLimit) {
+        showNotification('error', `單字數量超過限制（${maxWordsLimit}個）`, '請減少輸入的單字數量');
+    }
+}
+
+// 清空輸入
+function clearInput() {
+    document.getElementById('wordsInput').value = '';
+    currentWords = [];
+    wordResults = {};
+    updateWordCount();
+    validateInput();
+    hidePreviewSection();
+}
+
+// 開始 AI 查詢
+async function startAIQuery() {
+    if (currentWords.length === 0) return;
+    
+    showProcessingOverlay('AI 查詢中...', '正在獲取單字資訊，請稍候');
+    
+    wordResults = {};
+    processingQueue = [...currentWords];
+    
+    try {
+        await processWordsQueue();
+        showPreviewSection();
+    } catch (error) {
+        console.error('AI 查詢失敗:', error);
+        showNotification('error', 'AI 查詢失敗', error.message);
+    } finally {
+        hideProcessingOverlay();
+    }
+}
+
+// 處理單字佇列
+async function processWordsQueue() {
+    const total = processingQueue.length;
+    
+    for (let i = 0; i < processingQueue.length; i++) {
+        const word = processingQueue[i];
+        const progress = ((i + 1) / total) * 100;
+        
+        updateProcessingProgress(progress, `處理中: ${word}`, i + 1, total);
+        
+        try {
+            const result = await queryWordInfo(word);
+            wordResults[word] = { ...result, status: 'success' };
+        } catch (error) {
+            console.error(`查詢 ${word} 失敗:`, error);
+            wordResults[word] = { 
+                word: word,
+                status: 'error', 
+                error: error.message || '查詢失敗'
+            };
+        }
+        
+        // 避免請求過於頻繁
+        if (i < processingQueue.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
+    }
+}
+
+// 查詢單字資訊
+async function queryWordInfo(word) {
+    const response = await fetch('/api/ai-generate', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ word: word })
+    });
+    
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || '網路請求失敗');
+    }
+    
+    return await response.json();
+}
+
+// 顯示預覽區域
+function showPreviewSection() {
+    const previewSection = document.getElementById('previewSection');
+    const container = document.getElementById('wordPreviewContainer');
+    
+    container.innerHTML = '';
+    
+    let successCount = 0;
+    let errorCount = 0;
+    
+    currentWords.forEach(word => {
+        const result = wordResults[word];
+        const card = createWordPreviewCard(word, result);
+        container.appendChild(card);
+        
+        if (result.status === 'success') {
+            successCount++;
+        } else {
+            errorCount++;
+        }
+    });
+    
+    // 更新按鈕狀態
+    document.getElementById('saveAllBtn').disabled = successCount === 0;
+    document.getElementById('retryErrorsBtn').style.display = errorCount > 0 ? 'inline-block' : 'none';
+    
+    previewSection.style.display = 'block';
+    previewSection.scrollIntoView({ behavior: 'smooth' });
+}
+
+// 創建單字預覽卡片
+function createWordPreviewCard(word, result) {
+    const card = document.createElement('div');
+    card.className = `card word-preview-card mb-3 ${result.status}`;
+    
+    if (result.status === 'success') {
+        card.innerHTML = `
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <h6 class="text-primary mb-1">${result.word}</h6>
+                        <small class="text-muted">${result.phonetic || ''}</small>
+                    </div>
+                    <div class="col-md-4">
+                        <strong>中文：</strong>${result.chinese_meaning || ''}
+                    </div>
+                    <div class="col-md-5">
+                        <small class="text-muted">${result.english_meaning || ''}</small>
+                    </div>
+                </div>
+                ${result.example_sentence ? `
+                    <div class="row mt-2">
+                        <div class="col-12">
+                            <small><strong>例句：</strong>${result.example_sentence}</small>
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    } else {
+        card.innerHTML = `
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-danger mb-1">${word}</h6>
+                        <small class="text-muted">錯誤: ${result.error}</small>
+                    </div>
+                    <button class="btn btn-sm btn-outline-primary" onclick="retryWord('${word}')">
+                        <i class="bi bi-arrow-repeat"></i> 重試
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+    
+    return card;
+}
+
+// 重試單個單字
+async function retryWord(word) {
+    showProcessingOverlay('重試查詢...', `正在重新查詢 ${word}`);
+    
+    try {
+        const result = await queryWordInfo(word);
+        wordResults[word] = { ...result, status: 'success' };
+        showPreviewSection();
+        showNotification('success', '重試成功', `${word} 的資訊已更新`);
+    } catch (error) {
+        wordResults[word] = { 
+            word: word,
+            status: 'error', 
+            error: error.message || '查詢失敗'
+        };
+        showPreviewSection();
+        showNotification('error', '重試失敗', error.message);
+    } finally {
+        hideProcessingOverlay();
+    }
+}
+
+// 重試所有錯誤的單字
+async function retryErrors() {
+    const errorWords = currentWords.filter(word => wordResults[word].status === 'error');
+    
+    if (errorWords.length === 0) return;
+    
+    showProcessingOverlay('重試錯誤單字...', '正在重新查詢失敗的單字');
+    
+    processingQueue = errorWords;
+    
+    try {
+        await processWordsQueue();
+        showPreviewSection();
+        showNotification('success', '重試完成', '已重新查詢所有失敗的單字');
+    } catch (error) {
+        showNotification('error', '重試失敗', error.message);
+    } finally {
+        hideProcessingOverlay();
+    }
+}
+
+// 儲存所有成功的單字
+async function saveAllWords() {
+    const successWords = currentWords.filter(word => wordResults[word].status === 'success');
+    
+    if (successWords.length === 0) {
+        showNotification('warning', '沒有可儲存的單字', '請先成功查詢單字資訊');
+        return;
+    }
+    
+    showProcessingOverlay('儲存中...', '正在儲存單字到資料庫');
+    
+    try {
+        const wordsData = successWords.map(word => wordResults[word]);
+        
+        const response = await fetch('/api/batch-add-words', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ words: wordsData })
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || '儲存失敗');
+        }
+        
+        const result = await response.json();
+        
+        showNotification('success', '批次新增成功', `成功新增 ${result.added_count} 個單字`);
+        
+        // 清空輸入並重置
+        setTimeout(() => {
+            clearInput();
+        }, 2000);
+        
+    } catch (error) {
+        console.error('儲存失敗:', error);
+        showNotification('error', '儲存失敗', error.message);
+    } finally {
+        hideProcessingOverlay();
+    }
+}
+
+// 隱藏預覽區域
+function hidePreviewSection() {
+    document.getElementById('previewSection').style.display = 'none';
+}
+
+// 顯示處理中覆蓋層
+function showProcessingOverlay(title, message) {
+    document.getElementById('processingTitle').textContent = title;
+    document.getElementById('processingMessage').textContent = message;
+    document.getElementById('processingProgress').style.width = '0%';
+    document.getElementById('processingDetails').innerHTML = '';
+    document.getElementById('processingOverlay').style.display = 'flex';
+}
+
+// 更新處理進度
+function updateProcessingProgress(percentage, message, current, total) {
+    document.getElementById('processingProgress').style.width = percentage + '%';
+    document.getElementById('processingMessage').textContent = message;
+    
+    if (current && total) {
+        document.getElementById('processingDetails').innerHTML = `
+            <div class="progress-item">
+                <span>進度</span>
+                <span>${current} / ${total}</span>
+            </div>
+        `;
+    }
+}
+
+// 隱藏處理中覆蓋層
+function hideProcessingOverlay() {
+    document.getElementById('processingOverlay').style.display = 'none';
+}
+
+// 顯示通知（使用新的通知系統）
+function showNotification(type, title, message) {
+    if (window.notificationSystem) {
+        if (type === 'error') {
+            window.notificationSystem.error(message, title);
+        } else if (type === 'success') {
+            window.notificationSystem.success(message, title);
+        } else if (type === 'warning') {
+            window.notificationSystem.warning(message, title);
+        } else {
+            window.notificationSystem.info(message, title);
+        }
+    } else {
+        // 備用方案
+        alert(`${title}: ${message}`);
+    }
+}
+</script>
+{% endblock %}
