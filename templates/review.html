@@ -4,93 +4,137 @@
 
 {% block extra_css %}
 <style>
-.review-card {
-    min-height: 400px;
-    transition: all 0.3s ease;
-    cursor: pointer;
-}
-
-.review-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-}
-
-.review-card.flipped .card-front {
-    transform: rotateY(180deg);
-}
-
-.review-card.flipped .card-back {
-    transform: rotateY(0deg);
-}
-
-.card-front, .card-back {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    backface-visibility: hidden;
-    transition: transform 0.6s;
-    border-radius: 0.5rem;
-}
-
-.card-back {
-    transform: rotateY(180deg);
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-}
-
-.review-progress {
-    height: 8px;
-    background-color: #e9ecef;
-    border-radius: 4px;
-    overflow: hidden;
-}
-
-.review-progress-bar {
-    height: 100%;
-    background: linear-gradient(90deg, #28a745, #20c997);
-    transition: width 0.3s ease;
-}
-
-.word-display {
-    font-size: 2.5rem;
-    font-weight: bold;
-    color: #0d6efd;
-}
-
-.phonetic-display {
-    font-size: 1.2rem;
-    color: #6c757d;
-    font-family: monospace;
-}
-
-.meaning-display {
-    font-size: 1.5rem;
-    color: #198754;
-}
-
-.control-buttons {
-    margin-top: 2rem;
-    text-align: center;
-}
-
-@media (max-width: 768px) {
-    .word-display {
-        font-size: 2rem;
+    .review-progress {
+        height: 8px;
+        background-color: #e9ecef;
+        border-radius: 4px;
+        overflow: hidden;
     }
 
-    .meaning-display {
+    .review-progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, #28a745, #20c997);
+        transition: width 0.3s ease;
+    }
+
+    .word-table {
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .word-row {
+        transition: background-color 0.2s ease;
+        border-bottom: 1px solid #f8f9fa;
+    }
+
+    .word-row:hover {
+        background-color: #f8f9fa;
+    }
+
+    .word-row.difficult {
+        background-color: #fff3cd;
+        border-left: 4px solid #ffc107;
+    }
+
+    .word-cell {
+        padding: 1rem;
+        vertical-align: middle;
+    }
+
+    .word-text {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #0d6efd;
+    }
+
+    .phonetic-text {
+        font-family: 'Courier New', monospace;
+        color: #6c757d;
+        font-size: 0.95rem;
+    }
+
+    .meaning-text {
+        color: #198754;
+        font-size: 1rem;
+    }
+
+    .hidden-content {
+        color: transparent;
+        background-color: #e9ecef;
+        border-radius: 4px;
+        cursor: pointer;
+        user-select: none;
+        transition: all 0.3s ease;
+    }
+
+    .hidden-content:hover {
+        background-color: #dee2e6;
+    }
+
+    .hidden-content.revealed {
+        color: inherit;
+        background-color: transparent;
+    }
+
+    .difficulty-btn {
+        border: none;
+        background: none;
+        color: #6c757d;
         font-size: 1.2rem;
+        cursor: pointer;
+        transition: color 0.2s ease;
+    }
+
+    .difficulty-btn:hover {
+        color: #ffc107;
+    }
+
+    .difficulty-btn.marked {
+        color: #ffc107;
+    }
+
+    .settings-panel {
+        background: #f8f9fa;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .batch-info {
+        font-size: 1.1rem;
+        font-weight: 500;
     }
 
     .control-buttons {
-        margin-top: 1rem;
+        margin-top: 2rem;
+        text-align: center;
     }
-}
+
+    @media (max-width: 768px) {
+        .word-cell {
+            padding: 0.75rem 0.5rem;
+        }
+
+        .word-text {
+            font-size: 1rem;
+        }
+
+        .phonetic-text,
+        .meaning-text {
+            font-size: 0.9rem;
+        }
+
+        .settings-panel {
+            padding: 0.75rem;
+        }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container-fluid">
-    <!-- 頂部進度條 -->
+    <!-- 頂部進度條和設定 -->
     <div class="row mb-4">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center mb-2">
@@ -98,8 +142,9 @@
                     <i class="bi bi-shuffle"></i> 隨機複習
                 </h2>
                 <div class="d-flex align-items-center gap-3">
-                    <span class="text-muted">
-                        <span id="currentIndex">1</span> / {{ total_words }}
+                    <span class="batch-info text-muted">
+                        第 <span id="currentBatch">1</span> 組
+                        (<span id="batchRange">1-20</span> / {{ total_words }})
                     </span>
                     <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
                         <i class="bi bi-x-lg"></i> 結束複習
@@ -112,37 +157,53 @@
         </div>
     </div>
 
-    <!-- 複習卡片 -->
-    <div class="row justify-content-center">
-        <div class="col-lg-8 col-xl-6">
-            <div class="review-card card position-relative" id="reviewCard" onclick="flipCard()">
-                <!-- 正面 - 顯示英文單字 -->
-                <div class="card-front">
-                    <div class="card-body d-flex flex-column justify-content-center align-items-center text-center h-100">
-                        <div class="mb-4">
-                            <div class="word-display" id="wordDisplay"></div>
-                            <div class="phonetic-display mt-2" id="phoneticDisplay"></div>
-                        </div>
-                        <div class="text-muted">
-                            <i class="bi bi-mouse"></i> 點擊卡片查看答案
+    <!-- 設定面板 -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="settings-panel">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <div class="d-flex gap-3 align-items-center">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="showPhonetic" checked>
+                                <label class="form-check-label" for="showPhonetic">顯示音標</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="showMeaning" checked>
+                                <label class="form-check-label" for="showMeaning">顯示中文</label>
+                            </div>
                         </div>
                     </div>
+                    <div class="col-md-6 text-md-end">
+                        <button class="btn btn-sm btn-outline-primary" onclick="toggleAllHidden()">
+                            <i class="bi bi-eye-slash"></i> 全部隱藏/顯示
+                        </button>
+                        <button class="btn btn-sm btn-outline-warning" onclick="showDifficultWords()">
+                            <i class="bi bi-star"></i> 困難單字 (<span id="difficultCount">0</span>)
+                        </button>
+                    </div>
                 </div>
+            </div>
+        </div>
+    </div>
 
-                <!-- 背面 - 顯示中文翻譯和詳細資訊 -->
-                <div class="card-back">
-                    <div class="card-body d-flex flex-column justify-content-center align-items-center text-center h-100">
-                        <div class="mb-3">
-                            <div class="meaning-display" id="meaningDisplay"></div>
-                        </div>
-                        <div class="mb-3" id="englishMeaningDisplay"></div>
-                        <div class="mb-3" id="exampleDisplay"></div>
-                        <div class="row w-100" id="synonymsAntonymsDisplay"></div>
-                        <div class="text-muted mt-3">
-                            <i class="bi bi-mouse"></i> 點擊卡片返回正面
-                        </div>
-                    </div>
-                </div>
+    <!-- 單字列表 -->
+    <div class="row">
+        <div class="col-12">
+            <div class="word-table">
+                <table class="table table-hover mb-0" id="wordsTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 30%">單字</th>
+                            <th style="width: 25%">音標</th>
+                            <th style="width: 35%">中文解釋</th>
+                            <th style="width: 10%" class="text-center">標記</th>
+                        </tr>
+                    </thead>
+                    <tbody id="wordsTableBody">
+                        <!-- 動態生成內容 -->
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -150,15 +211,40 @@
     <!-- 控制按鈕 -->
     <div class="control-buttons">
         <div class="btn-group" role="group">
-            <button type="button" class="btn btn-outline-primary" id="prevBtn" onclick="previousCard()">
-                <i class="bi bi-chevron-left"></i> 上一個
+            <button type="button" class="btn btn-outline-primary" id="prevBtn" onclick="previousBatch()">
+                <i class="bi bi-chevron-left"></i> 上一組
             </button>
-            <button type="button" class="btn btn-primary" id="flipBtn" onclick="flipCard()">
-                <i class="bi bi-arrow-repeat"></i> 翻轉
+            <button type="button" class="btn btn-outline-secondary" onclick="shuffleCurrentBatch()">
+                <i class="bi bi-shuffle"></i> 重新排序
             </button>
-            <button type="button" class="btn btn-outline-primary" id="nextBtn" onclick="nextCard()">
-                下一個 <i class="bi bi-chevron-right"></i>
+            <button type="button" class="btn btn-outline-primary" id="nextBtn" onclick="nextBatch()">
+                下一組 <i class="bi bi-chevron-right"></i>
             </button>
+        </div>
+    </div>
+
+    <!-- 困難單字 Modal -->
+    <div class="modal fade" id="difficultWordsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-star-fill text-warning"></i> 困難單字列表
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="difficultWordsList">
+                        <!-- 動態生成困難單字列表 -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" onclick="clearAllDifficult()">
+                        <i class="bi bi-trash"></i> 清除全部標記
+                    </button>
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">關閉</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -181,22 +267,25 @@
 
                     <div class="row text-center mt-4">
                         <div class="col-4">
-                            <div class="h3 text-primary">{{ total_words }}</div>
+                            <div class="h3 text-primary" id="totalWordsCount">{{ total_words }}</div>
                             <small class="text-muted">總單字數</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="h3 text-warning" id="finalDifficultCount">0</div>
+                            <small class="text-muted">困難單字</small>
                         </div>
                         <div class="col-4">
                             <div class="h3 text-success" id="reviewTime">0</div>
                             <small class="text-muted">複習時間(分)</small>
-                        </div>
-                        <div class="col-4">
-                            <div class="h3 text-info" id="avgTime">0</div>
-                            <small class="text-muted">平均時間(秒)</small>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" onclick="restartReview()">
                         <i class="bi bi-arrow-repeat"></i> 重新複習
+                    </button>
+                    <button type="button" class="btn btn-outline-warning" onclick="reviewDifficultOnly()">
+                        <i class="bi bi-star"></i> 只複習困難單字
                     </button>
                     <a href="{{ url_for('index') }}" class="btn btn-primary">
                         <i class="bi bi-house"></i> 返回首頁
@@ -210,205 +299,369 @@
 
 {% block extra_js %}
 <script>
-// 複習資料
-const words = {{ words | tojson }};
-let currentIndex = 0;
-let isFlipped = false;
-let startTime = new Date();
-let reviewedWords = new Set();
+    // 複習資料
+    const words = {{ words | tojson }};
+    const BATCH_SIZE = 20;
+    let currentBatchIndex = 0;
+    let startTime = new Date();
+    let difficultWords = new Set();
+    let allHidden = false;
 
-// 初始化
-document.addEventListener('DOMContentLoaded', function() {
-    if (words.length === 0) {
-        alert('沒有單字可以複習');
-        window.location.href = '{{ url_for("index") }}';
-        return;
-    }
-
-    displayCurrentWord();
-    updateProgress();
-    updateButtons();
-});
-
-// 顯示當前單字
-function displayCurrentWord() {
-    const word = words[currentIndex];
-
-    // 更新正面
-    document.getElementById('wordDisplay').textContent = word.word;
-    document.getElementById('phoneticDisplay').textContent = word.phonetic || '';
-
-    // 更新背面
-    document.getElementById('meaningDisplay').textContent = word.chinese_meaning;
-
-    // 英文定義
-    const englishMeaningEl = document.getElementById('englishMeaningDisplay');
-    if (word.english_meaning) {
-        englishMeaningEl.innerHTML = `<p class="text-muted">${word.english_meaning}</p>`;
-    } else {
-        englishMeaningEl.innerHTML = '';
-    }
-
-    // 例句
-    const exampleEl = document.getElementById('exampleDisplay');
-    if (word.example_sentence) {
-        exampleEl.innerHTML = `<blockquote class="blockquote-footer small">"${word.example_sentence}"</blockquote>`;
-    } else {
-        exampleEl.innerHTML = '';
-    }
-
-    // 同義詞和反義詞
-    const synonymsAntonymsEl = document.getElementById('synonymsAntonymsDisplay');
-    let synonymsAntonymsHtml = '';
-
-    if (word.synonyms && word.synonyms.length > 0) {
-        synonymsAntonymsHtml += `
-            <div class="col-6">
-                <small class="text-success">同義詞:</small><br>
-                ${word.synonyms.map(s => `<span class="badge bg-success-subtle text-success-emphasis me-1">${s}</span>`).join('')}
-            </div>
-        `;
-    }
-
-    if (word.antonyms && word.antonyms.length > 0) {
-        synonymsAntonymsHtml += `
-            <div class="col-6">
-                <small class="text-danger">反義詞:</small><br>
-                ${word.antonyms.map(a => `<span class="badge bg-danger-subtle text-danger-emphasis me-1">${a}</span>`).join('')}
-            </div>
-        `;
-    }
-
-    synonymsAntonymsEl.innerHTML = synonymsAntonymsHtml;
-
-    // 重置翻轉狀態
-    isFlipped = false;
-    document.getElementById('reviewCard').classList.remove('flipped');
-
-    // 標記為已複習
-    reviewedWords.add(currentIndex);
-}
-
-// 翻轉卡片
-function flipCard() {
-    isFlipped = !isFlipped;
-    const card = document.getElementById('reviewCard');
-
-    if (isFlipped) {
-        card.classList.add('flipped');
-    } else {
-        card.classList.remove('flipped');
-    }
-}
-
-// 下一張卡片
-function nextCard() {
-    if (currentIndex < words.length - 1) {
-        currentIndex++;
-        displayCurrentWord();
-        updateProgress();
-        updateButtons();
-    } else {
-        // 複習完成
-        showReviewStats();
-    }
-}
-
-// 上一張卡片
-function previousCard() {
-    if (currentIndex > 0) {
-        currentIndex--;
-        displayCurrentWord();
-        updateProgress();
-        updateButtons();
-    }
-}
-
-// 更新進度條
-function updateProgress() {
-    const progress = ((currentIndex + 1) / words.length) * 100;
-    document.getElementById('progressBar').style.width = progress + '%';
-    document.getElementById('currentIndex').textContent = currentIndex + 1;
-}
-
-// 更新按鈕狀態
-function updateButtons() {
-    document.getElementById('prevBtn').disabled = currentIndex === 0;
-
-    const nextBtn = document.getElementById('nextBtn');
-    if (currentIndex === words.length - 1) {
-        nextBtn.innerHTML = '完成複習 <i class="bi bi-check-lg"></i>';
-        nextBtn.classList.remove('btn-outline-primary');
-        nextBtn.classList.add('btn-success');
-    } else {
-        nextBtn.innerHTML = '下一個 <i class="bi bi-chevron-right"></i>';
-        nextBtn.classList.remove('btn-success');
-        nextBtn.classList.add('btn-outline-primary');
-    }
-}
-
-// 顯示複習統計
-function showReviewStats() {
-    const endTime = new Date();
-    const reviewTimeMinutes = Math.round((endTime - startTime) / 60000);
-    const avgTimeSeconds = Math.round((endTime - startTime) / 1000 / words.length);
-
-    document.getElementById('reviewTime').textContent = reviewTimeMinutes;
-    document.getElementById('avgTime').textContent = avgTimeSeconds;
-
-    const modal = new bootstrap.Modal(document.getElementById('reviewStatsModal'));
-    modal.show();
-}
-
-// 重新開始複習
-function restartReview() {
-    currentIndex = 0;
-    reviewedWords.clear();
-    startTime = new Date();
-
-    // 重新打亂單字順序
-    for (let i = words.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [words[i], words[j]] = [words[j], words[i]];
-    }
-
-    displayCurrentWord();
-    updateProgress();
-    updateButtons();
-
-    // 關閉統計 Modal
-    const modal = bootstrap.Modal.getInstance(document.getElementById('reviewStatsModal'));
-    modal.hide();
-}
-
-// 鍵盤快捷鍵
-document.addEventListener('keydown', function(e) {
-    switch(e.key) {
-        case 'ArrowLeft':
-            e.preventDefault();
-            previousCard();
-            break;
-        case 'ArrowRight':
-            e.preventDefault();
-            nextCard();
-            break;
-        case ' ':
-        case 'Enter':
-            e.preventDefault();
-            flipCard();
-            break;
-        case 'Escape':
+    // 初始化
+    document.addEventListener('DOMContentLoaded', function () {
+        if (words.length === 0) {
+            showInfo('沒有單字可以複習');
             window.location.href = '{{ url_for("index") }}';
-            break;
-    }
-});
+            return;
+        }
 
-// 防止意外離開
-window.addEventListener('beforeunload', function(e) {
-    if (reviewedWords.size > 0 && currentIndex < words.length - 1) {
-        e.preventDefault();
-        e.returnValue = '您的複習進度將會遺失，確定要離開嗎？';
+        displayCurrentBatch();
+        updateProgress();
+        updateButtons();
+        setupEventListeners();
+    });
+
+    // 設定事件監聽器
+    function setupEventListeners() {
+        document.getElementById('showPhonetic').addEventListener('change', updateColumnVisibility);
+        document.getElementById('showMeaning').addEventListener('change', updateColumnVisibility);
     }
-});
+
+    // 顯示當前批次的單字
+    function displayCurrentBatch() {
+        const startIndex = currentBatchIndex * BATCH_SIZE;
+        const endIndex = Math.min(startIndex + BATCH_SIZE, words.length);
+        const batchWords = words.slice(startIndex, endIndex);
+
+        const tbody = document.getElementById('wordsTableBody');
+        tbody.innerHTML = '';
+
+        batchWords.forEach((word, index) => {
+            const globalIndex = startIndex + index;
+            const row = createWordRow(word, globalIndex);
+            tbody.appendChild(row);
+        });
+
+        updateColumnVisibility();
+    }
+
+    // 創建單字行
+    function createWordRow(word, globalIndex) {
+        const row = document.createElement('tr');
+        row.className = 'word-row';
+        row.dataset.wordId = globalIndex;
+
+        if (difficultWords.has(globalIndex)) {
+            row.classList.add('difficult');
+        }
+
+        row.innerHTML = `
+        <td class="word-cell">
+            <div class="word-text">${word.word}</div>
+        </td>
+        <td class="word-cell phonetic-column">
+            <div class="phonetic-text phonetic-content" onclick="toggleReveal(this)">
+                ${word.phonetic || ''}
+            </div>
+        </td>
+        <td class="word-cell meaning-column">
+            <div class="meaning-text meaning-content" onclick="toggleReveal(this)">
+                ${word.chinese_meaning}
+            </div>
+        </td>
+        <td class="word-cell text-center">
+            <button class="difficulty-btn ${difficultWords.has(globalIndex) ? 'marked' : ''}" 
+                    onclick="toggleDifficulty(${globalIndex}, this)">
+                <i class="bi bi-star${difficultWords.has(globalIndex) ? '-fill' : ''}"></i>
+            </button>
+        </td>
+    `;
+
+        return row;
+    }
+
+    // 切換顯示/隱藏內容
+    function toggleReveal(element) {
+        element.classList.toggle('revealed');
+    }
+
+    // 切換困難標記
+    function toggleDifficulty(wordIndex, button) {
+        const row = document.querySelector(`tr[data-word-id="${wordIndex}"]`);
+        const icon = button.querySelector('i');
+
+        if (difficultWords.has(wordIndex)) {
+            difficultWords.delete(wordIndex);
+            button.classList.remove('marked');
+            icon.className = 'bi bi-star';
+            row.classList.remove('difficult');
+        } else {
+            difficultWords.add(wordIndex);
+            button.classList.add('marked');
+            icon.className = 'bi bi-star-fill';
+            row.classList.add('difficult');
+        }
+
+        updateDifficultCount();
+    }
+
+    // 更新困難單字計數
+    function updateDifficultCount() {
+        document.getElementById('difficultCount').textContent = difficultWords.size;
+    }
+
+    // 更新欄位可見性
+    function updateColumnVisibility() {
+        const showPhonetic = document.getElementById('showPhonetic').checked;
+        const showMeaning = document.getElementById('showMeaning').checked;
+
+        // 更新表頭
+        const phoneticHeaders = document.querySelectorAll('th:nth-child(2)');
+        const meaningHeaders = document.querySelectorAll('th:nth-child(3)');
+
+        phoneticHeaders.forEach(th => th.style.display = showPhonetic ? '' : 'none');
+        meaningHeaders.forEach(th => th.style.display = showMeaning ? '' : 'none');
+
+        // 更新表格內容
+        const phoneticCells = document.querySelectorAll('.phonetic-column');
+        const meaningCells = document.querySelectorAll('.meaning-column');
+
+        phoneticCells.forEach(cell => cell.style.display = showPhonetic ? '' : 'none');
+        meaningCells.forEach(cell => cell.style.display = showMeaning ? '' : 'none');
+
+        // 如果隱藏了欄位，自動隱藏內容
+        if (!showPhonetic) {
+            document.querySelectorAll('.phonetic-content').forEach(el => {
+                el.classList.add('hidden-content');
+                el.classList.remove('revealed');
+            });
+        }
+
+        if (!showMeaning) {
+            document.querySelectorAll('.meaning-content').forEach(el => {
+                el.classList.add('hidden-content');
+                el.classList.remove('revealed');
+            });
+        }
+    }
+
+    // 全部隱藏/顯示切換
+    function toggleAllHidden() {
+        allHidden = !allHidden;
+        const phoneticContents = document.querySelectorAll('.phonetic-content');
+        const meaningContents = document.querySelectorAll('.meaning-content');
+
+        [...phoneticContents, ...meaningContents].forEach(el => {
+            if (allHidden) {
+                el.classList.add('hidden-content');
+                el.classList.remove('revealed');
+            } else {
+                el.classList.remove('hidden-content');
+                el.classList.add('revealed');
+            }
+        });
+    }
+
+    // 下一批次
+    function nextBatch() {
+        const totalBatches = Math.ceil(words.length / BATCH_SIZE);
+
+        if (currentBatchIndex < totalBatches - 1) {
+            currentBatchIndex++;
+            displayCurrentBatch();
+            updateProgress();
+            updateButtons();
+            scrollToTop();
+        } else {
+            // 複習完成
+            showReviewStats();
+        }
+    }
+
+    // 上一批次
+    function previousBatch() {
+        if (currentBatchIndex > 0) {
+            currentBatchIndex--;
+            displayCurrentBatch();
+            updateProgress();
+            updateButtons();
+            scrollToTop();
+        }
+    }
+
+    // 重新排序當前批次
+    function shuffleCurrentBatch() {
+        const startIndex = currentBatchIndex * BATCH_SIZE;
+        const endIndex = Math.min(startIndex + BATCH_SIZE, words.length);
+        const batchWords = words.slice(startIndex, endIndex);
+
+        // 打亂當前批次
+        for (let i = batchWords.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [batchWords[i], batchWords[j]] = [batchWords[j], batchWords[i]];
+        }
+
+        // 更新原陣列
+        words.splice(startIndex, batchWords.length, ...batchWords);
+
+        displayCurrentBatch();
+    }
+
+    // 更新進度條和批次資訊
+    function updateProgress() {
+        const totalBatches = Math.ceil(words.length / BATCH_SIZE);
+        const progress = ((currentBatchIndex + 1) / totalBatches) * 100;
+
+        document.getElementById('progressBar').style.width = progress + '%';
+        document.getElementById('currentBatch').textContent = currentBatchIndex + 1;
+
+        const startIndex = currentBatchIndex * BATCH_SIZE + 1;
+        const endIndex = Math.min((currentBatchIndex + 1) * BATCH_SIZE, words.length);
+        document.getElementById('batchRange').textContent = `${startIndex}-${endIndex}`;
+    }
+
+    // 更新按鈕狀態
+    function updateButtons() {
+        const totalBatches = Math.ceil(words.length / BATCH_SIZE);
+
+        document.getElementById('prevBtn').disabled = currentBatchIndex === 0;
+
+        const nextBtn = document.getElementById('nextBtn');
+        if (currentBatchIndex === totalBatches - 1) {
+            nextBtn.innerHTML = '完成複習 <i class="bi bi-check-lg"></i>';
+            nextBtn.classList.remove('btn-outline-primary');
+            nextBtn.classList.add('btn-success');
+        } else {
+            nextBtn.innerHTML = '下一組 <i class="bi bi-chevron-right"></i>';
+            nextBtn.classList.remove('btn-success');
+            nextBtn.classList.add('btn-outline-primary');
+        }
+    }
+
+    // 顯示困難單字
+    function showDifficultWords() {
+        const difficultWordsList = document.getElementById('difficultWordsList');
+
+        if (difficultWords.size === 0) {
+            difficultWordsList.innerHTML = '<p class="text-muted text-center">尚未標記任何困難單字</p>';
+        } else {
+            let html = '<div class="row">';
+
+            Array.from(difficultWords).forEach(wordIndex => {
+                const word = words[wordIndex];
+                html += `
+                <div class="col-md-6 mb-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h6 class="card-title text-primary">${word.word}</h6>
+                            <p class="card-text small text-muted">${word.phonetic || ''}</p>
+                            <p class="card-text">${word.chinese_meaning}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            });
+
+            html += '</div>';
+            difficultWordsList.innerHTML = html;
+        }
+
+        const modal = new bootstrap.Modal(document.getElementById('difficultWordsModal'));
+        modal.show();
+    }
+
+    // 清除所有困難標記
+    function clearAllDifficult() {
+        difficultWords.clear();
+        updateDifficultCount();
+        displayCurrentBatch();
+
+        const modal = bootstrap.Modal.getInstance(document.getElementById('difficultWordsModal'));
+        modal.hide();
+    }
+
+    // 顯示複習統計
+    function showReviewStats() {
+        const endTime = new Date();
+        const reviewTimeMinutes = Math.round((endTime - startTime) / 60000);
+
+        document.getElementById('reviewTime').textContent = reviewTimeMinutes;
+        document.getElementById('finalDifficultCount').textContent = difficultWords.size;
+
+        const modal = new bootstrap.Modal(document.getElementById('reviewStatsModal'));
+        modal.show();
+    }
+
+    // 重新開始複習
+    function restartReview() {
+        currentBatchIndex = 0;
+        difficultWords.clear();
+        startTime = new Date();
+        allHidden = false;
+
+        // 重新打亂單字順序
+        for (let i = words.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [words[i], words[j]] = [words[j], words[i]];
+        }
+
+        displayCurrentBatch();
+        updateProgress();
+        updateButtons();
+        updateDifficultCount();
+
+        // 關閉統計 Modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('reviewStatsModal'));
+        modal.hide();
+    }
+
+    // 只複習困難單字
+    function reviewDifficultOnly() {
+        if (difficultWords.size === 0) {
+            alert('沒有標記困難的單字');
+            return;
+        }
+
+        // 創建只包含困難單字的新陣列
+        const difficultWordsArray = Array.from(difficultWords).map(index => words[index]);
+
+        // 重新導向到新的複習頁面（這裡可以考慮添加參數或新的路由）
+        // 暫時用當前頁面重新載入
+        window.location.href = '{{ url_for("random_review") }}';
+    }
+
+    // 滾動到頂部
+    function scrollToTop() {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // 鍵盤快捷鍵
+    document.addEventListener('keydown', function (e) {
+        switch (e.key) {
+            case 'ArrowLeft':
+                e.preventDefault();
+                previousBatch();
+                break;
+            case 'ArrowRight':
+                e.preventDefault();
+                nextBatch();
+                break;
+            case ' ':
+                e.preventDefault();
+                toggleAllHidden();
+                break;
+            case 'Escape':
+                window.location.href = '{{ url_for("index") }}';
+                break;
+        }
+    });
+
+    // 防止意外離開
+    window.addEventListener('beforeunload', function (e) {
+        if (currentBatchIndex > 0 || difficultWords.size > 0) {
+            e.preventDefault();
+            e.returnValue = '您的複習進度將會遺失，確定要離開嗎？';
+        }
+    });
 </script>
 {% endblock %}
