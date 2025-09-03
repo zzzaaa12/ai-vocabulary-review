@@ -1,0 +1,521 @@
+{% extends "base.html" %}
+
+{% block title %}AI 智能批次新增 - 英文單字筆記本{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>
+                <i class="bi bi-robot"></i> AI 智能批次新增
+            </h1>
+            <div class="btn-group">
+                <a href="{{ url_for('add_word') }}" class="btn btn-outline-primary">
+                    <i class="bi bi-plus-circle"></i> 單個新增
+                </a>
+                <a href="{{ url_for('add_words_batch') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-plus-square"></i> 手動批次
+                </a>
+                <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> 返回首頁
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if not step or step == 'input' %}
+<!-- Step 1: Input Words -->
+<div class="row">
+    <div class="col-lg-8">
+        <form method="POST" id="aiInputForm">
+            <input type="hidden" name="action" value="generate">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-magic"></i> 步驟 1：輸入單字列表
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="form-floating mb-3">
+                        <textarea class="form-control" id="words_text" name="words_text" 
+                                placeholder="請輸入英文單字，每行一個" 
+                                style="height: 300px" required></textarea>
+                        <label for="words_text">
+                            <i class="bi bi-list-ul"></i> 英文單字列表 *
+                        </label>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <h6><i class="bi bi-info-circle"></i> AI 智能生成說明：</h6>
+                        <p class="mb-2">只需要輸入英文單字，AI 會自動生成：</p>
+                        <ul class="mb-2">
+                            <li>中文翻譯</li>
+                            <li>英文定義</li>
+                            <li>國際音標</li>
+                            <li>實用例句</li>
+                            <li>同義詞和反義詞</li>
+                        </ul>
+                        <p class="mb-0 text-muted small">
+                            * 每行一個單字，最多支援 50 個單字<br>
+                            * 重複的單字會自動去除
+                        </p>
+                    </div>
+
+                    <div id="wordCount" class="text-muted small mb-3">
+                        單字數量：<span id="countNumber">0</span>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary" id="generateBtn">
+                            <i class="bi bi-robot"></i> AI 生成內容
+                        </button>
+                        <button type="reset" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-clockwise"></i> 清空
+                        </button>
+                        <button type="button" class="btn btn-outline-info" id="loadExampleBtn">
+                            <i class="bi bi-file-text"></i> 載入範例
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card sticky-top" style="top: 2rem;">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-lightbulb"></i> 使用範例
+                </h6>
+            </div>
+            <div class="card-body">
+                <h6>簡單輸入：</h6>
+                <div class="bg-light p-2 rounded mb-3">
+                    <code>
+                        apple<br>
+                        beautiful<br>
+                        intelligent<br>
+                        courage<br>
+                        adventure
+                    </code>
+                </div>
+
+                <div class="alert alert-success">
+                    <i class="bi bi-check-circle"></i>
+                    <strong>AI 優勢：</strong>
+                    <ul class="mb-0 mt-2">
+                        <li>自動生成完整資訊</li>
+                        <li>確保資料準確性</li>
+                        <li>節省大量時間</li>
+                        <li>支援批次處理</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="card-footer">
+                <div id="aiStatus" class="mb-2">
+                    <!-- AI 狀態會在這裡顯示 -->
+                </div>
+                <a href="{{ url_for('api_settings') }}" class="btn btn-outline-primary btn-sm w-100">
+                    <i class="bi bi-gear"></i> 設定 AI API
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% elif step == 'generate' %}
+<!-- Step 2: AI Generation and Preview -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-gear-fill"></i> 步驟 2：AI 生成中...
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="generationProgress" class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-muted">正在生成單字資訊...</span>
+                        <span id="progressText">0 / {{ words|length }}</span>
+                    </div>
+                    <div class="progress mb-2">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                             role="progressbar" style="width: 0%" id="progressBar"></div>
+                    </div>
+                    <div id="currentWord" class="text-center text-primary">
+                        準備開始...
+                    </div>
+                </div>
+
+                <div id="generationResults" style="display: none;">
+                    <h6><i class="bi bi-check-circle"></i> AI 生成完成！</h6>
+                    <div id="resultsContainer">
+                        <!-- AI 生成結果會在這裡顯示 -->
+                    </div>
+                    
+                    <form method="POST" id="saveForm" class="mt-4">
+                        <input type="hidden" name="action" value="save">
+                        <input type="hidden" name="ai_results" id="aiResultsData">
+                        
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-success" id="saveAllBtn">
+                                <i class="bi bi-check-circle"></i> 儲存選中的單字
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="window.location.reload()">
+                                <i class="bi bi-arrow-left"></i> 重新開始
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" id="selectAllBtn">
+                                <i class="bi bi-check-square"></i> 全選
+                            </button>
+                            <button type="button" class="btn btn-outline-warning" id="deselectAllBtn">
+                                <i class="bi bi-square"></i> 全不選
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// AI 批次生成功能
+document.addEventListener('DOMContentLoaded', function() {
+    const words = {{ words|tojson }};
+    startAIGeneration(words);
+});
+
+async function startAIGeneration(words) {
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+    const currentWord = document.getElementById('currentWord');
+    const generationResults = document.getElementById('generationResults');
+    const resultsContainer = document.getElementById('resultsContainer');
+    
+    try {
+        currentWord.textContent = '正在連接 AI 服務...';
+        
+        const response = await fetch('/api/batch-ai-generate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                words: words,
+                provider: null
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (!data.success) {
+            throw new Error(data.message);
+        }
+        
+        // 顯示結果
+        displayResults(data.results, data.statistics);
+        
+        // 隱藏進度，顯示結果
+        document.getElementById('generationProgress').style.display = 'none';
+        generationResults.style.display = 'block';
+        
+    } catch (error) {
+        console.error('AI 生成錯誤:', error);
+        currentWord.innerHTML = `<span class="text-danger">生成失敗：${error.message}</span>`;
+        progressBar.style.width = '100%';
+        progressBar.classList.remove('progress-bar-animated');
+        progressBar.classList.add('bg-danger');
+    }
+}
+
+function displayResults(results, statistics) {
+    const container = document.getElementById('resultsContainer');
+    
+    // 統計資訊
+    let html = `
+        <div class="alert alert-info mb-4">
+            <h6><i class="bi bi-bar-chart"></i> 生成統計</h6>
+            <div class="row text-center">
+                <div class="col-3">
+                    <div class="h5 text-primary">${statistics.total}</div>
+                    <small>總計</small>
+                </div>
+                <div class="col-3">
+                    <div class="h5 text-success">${statistics.successful}</div>
+                    <small>成功</small>
+                </div>
+                <div class="col-3">
+                    <div class="h5 text-danger">${statistics.failed}</div>
+                    <small>失敗</small>
+                </div>
+                <div class="col-3">
+                    <div class="h5 text-info">${statistics.success_rate.toFixed(1)}%</div>
+                    <small>成功率</small>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // 結果表格
+    html += `
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th width="50">
+                            <input type="checkbox" id="selectAllCheckbox" checked>
+                        </th>
+                        <th>單字</th>
+                        <th>中文翻譯</th>
+                        <th>信心度</th>
+                        <th>狀態</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    results.forEach((result, index) => {
+        if (result.success) {
+            const confidenceClass = result.confidence_score >= 0.8 ? 'success' : 
+                                   result.confidence_score >= 0.6 ? 'warning' : 'danger';
+            
+            html += `
+                <tr class="result-row" data-index="${index}">
+                    <td>
+                        <input type="checkbox" class="word-checkbox" checked data-index="${index}">
+                    </td>
+                    <td>
+                        <strong>${result.word}</strong>
+                        <br><small class="text-muted">${result.phonetic || '無音標'}</small>
+                    </td>
+                    <td>
+                        <div>${result.chinese_meaning}</div>
+                        <small class="text-muted">${result.english_meaning || '無英文定義'}</small>
+                    </td>
+                    <td>
+                        <span class="badge bg-${confidenceClass}">
+                            ${Math.round(result.confidence_score * 100)}%
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge bg-success">
+                            <i class="bi bi-check-circle"></i> 成功
+                        </span>
+                    </td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-outline-primary" 
+                                onclick="editResult(${index})">
+                            <i class="bi bi-pencil"></i> 編輯
+                        </button>
+                    </td>
+                </tr>
+            `;
+        } else {
+            html += `
+                <tr class="result-row table-danger" data-index="${index}">
+                    <td>
+                        <input type="checkbox" class="word-checkbox" disabled>
+                    </td>
+                    <td>
+                        <strong>${result.word}</strong>
+                    </td>
+                    <td colspan="2">
+                        <span class="text-danger">${result.error}</span>
+                    </td>
+                    <td>
+                        <span class="badge bg-danger">
+                            <i class="bi bi-x-circle"></i> 失敗
+                        </span>
+                    </td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-outline-warning" 
+                                onclick="retryWord('${result.word}', ${index})">
+                            <i class="bi bi-arrow-clockwise"></i> 重試
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }
+    });
+    
+    html += `
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    container.innerHTML = html;
+    
+    // 儲存結果到隱藏欄位
+    document.getElementById('aiResultsData').value = JSON.stringify(results);
+    
+    // 設置事件監聽器
+    setupResultsEventListeners();
+}
+
+function setupResultsEventListeners() {
+    // 全選/全不選功能
+    document.getElementById('selectAllBtn').addEventListener('click', function() {
+        document.querySelectorAll('.word-checkbox:not(:disabled)').forEach(checkbox => {
+            checkbox.checked = true;
+        });
+        updateSelectedCount();
+    });
+    
+    document.getElementById('deselectAllBtn').addEventListener('click', function() {
+        document.querySelectorAll('.word-checkbox').forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        updateSelectedCount();
+    });
+    
+    // 主選擇框
+    document.getElementById('selectAllCheckbox').addEventListener('change', function() {
+        document.querySelectorAll('.word-checkbox:not(:disabled)').forEach(checkbox => {
+            checkbox.checked = this.checked;
+        });
+        updateSelectedCount();
+    });
+    
+    // 個別選擇框
+    document.querySelectorAll('.word-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', updateSelectedCount);
+    });
+    
+    updateSelectedCount();
+}
+
+function updateSelectedCount() {
+    const selectedCount = document.querySelectorAll('.word-checkbox:checked').length;
+    const saveBtn = document.getElementById('saveAllBtn');
+    
+    if (selectedCount > 0) {
+        saveBtn.innerHTML = `<i class="bi bi-check-circle"></i> 儲存選中的單字 (${selectedCount})`;
+        saveBtn.disabled = false;
+    } else {
+        saveBtn.innerHTML = `<i class="bi bi-check-circle"></i> 請選擇要儲存的單字`;
+        saveBtn.disabled = true;
+    }
+    
+    // 更新結果資料
+    updateResultsData();
+}
+
+function updateResultsData() {
+    const currentData = JSON.parse(document.getElementById('aiResultsData').value);
+    
+    // 更新選中狀態
+    document.querySelectorAll('.word-checkbox').forEach(checkbox => {
+        const index = parseInt(checkbox.dataset.index);
+        if (currentData[index]) {
+            currentData[index].selected = checkbox.checked;
+        }
+    });
+    
+    document.getElementById('aiResultsData').value = JSON.stringify(currentData);
+}
+
+function editResult(index) {
+    // 編輯功能 - 可以在這裡實現編輯對話框
+    alert('編輯功能開發中...');
+}
+
+function retryWord(word, index) {
+    // 重試功能
+    alert(`重試功能開發中... 單字: ${word}`);
+}
+</script>
+
+{% block extra_js %}
+<script>
+// 第一步的 JavaScript 功能
+document.addEventListener('DOMContentLoaded', function() {
+    // 檢查 AI 狀態
+    checkAiStatus();
+    
+    // 載入範例
+    document.getElementById('loadExampleBtn').addEventListener('click', function() {
+        const exampleWords = `apple
+beautiful
+intelligent
+courage
+adventure
+knowledge
+friendship
+creativity
+determination
+happiness`;
+        
+        document.getElementById('words_text').value = exampleWords;
+        updateWordCount();
+    });
+    
+    // 監聽文本變化
+    document.getElementById('words_text').addEventListener('input', updateWordCount);
+    
+    // 表單提交處理
+    document.getElementById('aiInputForm').addEventListener('submit', function(e) {
+        const submitBtn = document.getElementById('generateBtn');
+        submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> 處理中...';
+        submitBtn.disabled = true;
+    });
+});
+
+function updateWordCount() {
+    const wordsText = document.getElementById('words_text').value.trim();
+    const words = wordsText ? wordsText.split('\n').filter(line => line.trim()).length : 0;
+    
+    document.getElementById('countNumber').textContent = words;
+    
+    const generateBtn = document.getElementById('generateBtn');
+    if (words > 0 && words <= 50) {
+        generateBtn.disabled = false;
+        generateBtn.innerHTML = '<i class="bi bi-robot"></i> AI 生成內容';
+    } else if (words > 50) {
+        generateBtn.disabled = true;
+        generateBtn.innerHTML = '<i class="bi bi-exclamation-triangle"></i> 超過 50 個單字限制';
+    } else {
+        generateBtn.disabled = true;
+        generateBtn.innerHTML = '<i class="bi bi-robot"></i> AI 生成內容';
+    }
+}
+
+function checkAiStatus() {
+    const statusDiv = document.getElementById('aiStatus');
+    
+    fetch('/api/ai-status')
+        .then(response => response.json())
+        .then(data => {
+            if (data.available_providers && data.available_providers.length > 0) {
+                statusDiv.innerHTML = `
+                    <div class="alert alert-success">
+                        <i class="bi bi-check-circle"></i>
+                        AI 功能已就緒 (${data.available_providers.join(', ').toUpperCase()})
+                    </div>
+                `;
+            } else {
+                statusDiv.innerHTML = `
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        需要設定 AI API Key 才能使用功能
+                    </div>
+                `;
+            }
+        })
+        .catch(() => {
+            statusDiv.innerHTML = `
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    正在檢查 AI 服務狀態...
+                </div>
+            `;
+        });
+}
+</script>
+{% endblock %}
+{% endif %}
+
+{% endblock %}

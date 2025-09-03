@@ -189,6 +189,215 @@ def register_routes(app):
 
         return render_template('add_word.html')
 
+    @app.route('/add-batch', methods=['GET', 'POST'])
+    @require_auth
+    def add_words_batch():
+        """
+        Handle batch adding of vocabulary words.
+        GET: Display batch add form
+        POST: Process batch word submission (manual mode)
+        """
+        if request.method == 'POST':
+            try:
+                # Get form data
+                words_text = request.form.get('words_text', '').strip()
+                
+                if not words_text:
+                    flash('請輸入要新增的單字', 'error')
+                    return render_template('add_batch.html')
+
+                # Parse words from text input
+                lines = [line.strip() for line in words_text.split('\n') if line.strip()]
+                
+                if not lines:
+                    flash('請輸入要新增的單字', 'error')
+                    return render_template('add_batch.html')
+
+                # Create Word objects from input
+                words_to_add = []
+                for i, line in enumerate(lines, 1):
+                    try:
+                        # Parse line format: "word|chinese_meaning|english_meaning|phonetic|example_sentence|synonyms|antonyms"
+                        # Minimum required: "word|chinese_meaning"
+                        parts = [part.strip() for part in line.split('|')]
+                        
+                        if len(parts) < 2:
+                            flash(f'第 {i} 行格式錯誤：至少需要「英文單字|中文翻譯」', 'error')
+                            continue
+                        
+                        word = parts[0]
+                        chinese_meaning = parts[1]
+                        english_meaning = parts[2] if len(parts) > 2 else ''
+                        phonetic = parts[3] if len(parts) > 3 else ''
+                        example_sentence = parts[4] if len(parts) > 4 else ''
+                        synonyms_str = parts[5] if len(parts) > 5 else ''
+                        antonyms_str = parts[6] if len(parts) > 6 else ''
+                        
+                        # Parse synonyms and antonyms
+                        synonyms = [s.strip() for s in synonyms_str.split(',') if s.strip()] if synonyms_str else []
+                        antonyms = [a.strip() for a in antonyms_str.split(',') if a.strip()] if antonyms_str else []
+                        
+                        # Create Word object
+                        from models.vocabulary import Word
+                        new_word = Word(
+                            word=word,
+                            chinese_meaning=chinese_meaning,
+                            english_meaning=english_meaning,
+                            phonetic=phonetic,
+                            example_sentence=example_sentence,
+                            synonyms=synonyms,
+                            antonyms=antonyms
+                        )
+                        
+                        words_to_add.append(new_word)
+                        
+                    except Exception as e:
+                        flash(f'第 {i} 行處理錯誤：{str(e)}', 'error')
+                        continue
+
+                if not words_to_add:
+                    flash('沒有有效的單字可以新增', 'error')
+                    return render_template('add_batch.html')
+
+                # Batch add words using vocabulary service
+                result = app.vocabulary_service.add_words_batch(words_to_add)
+                
+                # Generate result messages
+                if result['success_count'] > 0:
+                    flash(f'成功新增 {result["success_count"]} 個單字！', 'success')
+                
+                if result['duplicate_words']:
+                    flash(f'跳過重複單字：{", ".join(result["duplicate_words"])}', 'warning')
+                
+                if result['failed_words']:
+                    for failed in result['failed_words']:
+                        flash(f'「{failed["word"]}」新增失敗：{failed["error"]}', 'error')
+                
+                # If all successful, redirect to index
+                if result['error_count'] == 0 and result['success_count'] > 0:
+                    return redirect(url_for('index'))
+                
+                # Otherwise stay on the form with error messages
+                return render_template('add_batch.html')
+
+            except Exception as e:
+                flash(f'批次新增時發生錯誤：{str(e)}', 'error')
+                return render_template('add_batch.html')
+
+        return render_template('add_batch.html')
+
+    @app.route('/add-batch-ai', methods=['GET', 'POST'])
+    @require_auth
+    def add_words_batch_ai():
+        """
+        Handle AI-powered batch adding of vocabulary words.
+        GET: Display AI batch add form
+        POST: Process AI batch generation and save
+        """
+        if request.method == 'POST':
+            try:
+                # Get form data
+                action = request.form.get('action', 'generate')
+                
+                if action == 'generate':
+                    # Step 1: Generate AI content
+                    words_text = request.form.get('words_text', '').strip()
+                    
+                    if not words_text:
+                        flash('請輸入要新增的單字', 'error')
+                        return render_template('add_batch_ai.html')
+
+                    # Parse words from text input
+                    words = [word.strip() for word in words_text.split('\n') if word.strip()]
+                    
+                    if not words:
+                        flash('請輸入要新增的單字', 'error')
+                        return render_template('add_batch_ai.html')
+                    
+                    # Remove duplicates while preserving order
+                    unique_words = []
+                    seen = set()
+                    for word in words:
+                        if word.lower() not in seen:
+                            unique_words.append(word)
+                            seen.add(word.lower())
+                    
+                    if len(unique_words) != len(words):
+                        flash(f'已移除 {len(words) - len(unique_words)} 個重複單字', 'info')
+                    
+                    # Store words in session for AI generation
+                    session['batch_words'] = unique_words
+                    
+                    return render_template('add_batch_ai.html', 
+                                         words=unique_words, 
+                                         step='generate')
+                
+                elif action == 'save':
+                    # Step 2: Save AI generated results
+                    ai_results = request.form.get('ai_results')
+                    if not ai_results:
+                        flash('沒有 AI 生成的結果可以儲存', 'error')
+                        return render_template('add_batch_ai.html')
+                    
+                    import json
+                    try:
+                        results_data = json.loads(ai_results)
+                    except json.JSONDecodeError:
+                        flash('AI 結果資料格式錯誤', 'error')
+                        return render_template('add_batch_ai.html')
+                    
+                    # Create Word objects from AI results
+                    words_to_add = []
+                    for result in results_data:
+                        if result.get('selected', True):  # Only add selected words
+                            try:
+                                from models.vocabulary import Word
+                                new_word = Word(
+                                    word=result['word'],
+                                    chinese_meaning=result['chinese_meaning'],
+                                    english_meaning=result['english_meaning'],
+                                    phonetic=result['phonetic'],
+                                    example_sentence=result['example_sentence'],
+                                    synonyms=result['synonyms'],
+                                    antonyms=result['antonyms']
+                                )
+                                words_to_add.append(new_word)
+                            except Exception as e:
+                                flash(f'處理單字「{result.get("word", "未知")}」時發生錯誤：{str(e)}', 'error')
+                    
+                    if not words_to_add:
+                        flash('沒有有效的單字可以新增', 'error')
+                        return render_template('add_batch_ai.html')
+                    
+                    # Batch add words using vocabulary service
+                    result = app.vocabulary_service.add_words_batch(words_to_add)
+                    
+                    # Generate result messages
+                    if result['success_count'] > 0:
+                        flash(f'成功新增 {result["success_count"]} 個單字！', 'success')
+                    
+                    if result['duplicate_words']:
+                        flash(f'跳過重複單字：{", ".join(result["duplicate_words"])}', 'warning')
+                    
+                    if result['failed_words']:
+                        for failed in result['failed_words']:
+                            flash(f'「{failed["word"]}」新增失敗：{failed["error"]}', 'error')
+                    
+                    # Clear session data
+                    session.pop('batch_words', None)
+                    
+                    # If all successful, redirect to index
+                    if result['error_count'] == 0 and result['success_count'] > 0:
+                        return redirect(url_for('index'))
+                    
+                    return render_template('add_batch_ai.html')
+
+            except Exception as e:
+                flash(f'處理時發生錯誤：{str(e)}', 'error')
+                return render_template('add_batch_ai.html')
+
+        return render_template('add_batch_ai.html')
+
     @app.route('/edit/<word_id>', methods=['GET', 'POST'])
     @require_auth
     def edit_word(word_id):
@@ -582,6 +791,97 @@ def register_routes(app):
             return jsonify({
                 'success': False,
                 'message': f'AI 生成失敗: {str(e)}'
+            })
+
+    @app.route('/api/batch-ai-generate', methods=['POST'])
+    @require_auth_api
+    def batch_ai_generate():
+        """
+        Generate word information for multiple words using AI.
+        """
+        from services.ai_word_service import ai_word_service
+
+        try:
+            data = request.get_json()
+            words = data.get('words', [])
+            provider = data.get('provider')
+
+            if not words:
+                return jsonify({
+                    'success': False,
+                    'message': '請提供要生成的單字列表'
+                })
+
+            if len(words) > 50:  # Limit batch size
+                return jsonify({
+                    'success': False,
+                    'message': '批次處理最多支援 50 個單字'
+                })
+
+            results = []
+            total_words = len(words)
+
+            for i, word in enumerate(words):
+                try:
+                    word = word.strip()
+                    if not word:
+                        continue
+
+                    # Validate word format
+                    is_valid, error_msg = ai_word_service.validate_word(word)
+                    if not is_valid:
+                        results.append({
+                            'word': word,
+                            'success': False,
+                            'error': error_msg,
+                            'progress': ((i + 1) / total_words) * 100
+                        })
+                        continue
+
+                    # Generate word information
+                    word_info = ai_word_service.generate_word_info_sync(word, provider)
+
+                    results.append({
+                        'word': word_info.word,
+                        'chinese_meaning': word_info.chinese_meaning,
+                        'english_meaning': word_info.english_meaning,
+                        'phonetic': word_info.phonetic,
+                        'example_sentence': word_info.example_sentence,
+                        'synonyms': word_info.synonyms,
+                        'antonyms': word_info.antonyms,
+                        'provider': word_info.provider,
+                        'confidence_score': word_info.confidence_score,
+                        'success': True,
+                        'progress': ((i + 1) / total_words) * 100
+                    })
+
+                except Exception as e:
+                    results.append({
+                        'word': word,
+                        'success': False,
+                        'error': f'AI 生成失敗: {str(e)}',
+                        'progress': ((i + 1) / total_words) * 100
+                    })
+
+            # Calculate statistics
+            successful_results = [r for r in results if r.get('success', False)]
+            failed_results = [r for r in results if not r.get('success', False)]
+
+            return jsonify({
+                'success': True,
+                'results': results,
+                'statistics': {
+                    'total': len(results),
+                    'successful': len(successful_results),
+                    'failed': len(failed_results),
+                    'success_rate': (len(successful_results) / len(results) * 100) if results else 0
+                }
+            })
+
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'message': f'批次生成失敗: {str(e)}'
             })
 
     @app.route('/api/stats', methods=['GET'])

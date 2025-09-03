@@ -1,0 +1,310 @@
+{% extends "base.html" %}
+
+{% block title %}批次新增單字 - 英文單字筆記本{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>
+                <i class="bi bi-plus-square"></i> 批次新增單字
+            </h1>
+            <div class="btn-group">
+                <a href="{{ url_for('add_word') }}" class="btn btn-outline-primary">
+                    <i class="bi bi-plus-circle"></i> 單個新增
+                </a>
+                <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> 返回首頁
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <form method="POST" id="batchAddForm">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-textarea-t"></i> 批次輸入單字
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="form-floating mb-3">
+                        <textarea class="form-control" id="words_text" name="words_text" 
+                                placeholder="請輸入要新增的單字，每行一個" 
+                                style="height: 400px" required></textarea>
+                        <label for="words_text">
+                            <i class="bi bi-list-ul"></i> 單字列表 *
+                        </label>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <h6><i class="bi bi-info-circle"></i> 輸入格式說明：</h6>
+                        <p class="mb-2">每行一個單字，使用 <code>|</code> 分隔不同欄位：</p>
+                        <ul class="mb-2">
+                            <li><strong>基本格式：</strong> <code>英文單字|中文翻譯</code></li>
+                            <li><strong>完整格式：</strong> <code>英文單字|中文翻譯|英文定義|音標|例句|同義詞|反義詞</code></li>
+                        </ul>
+                        <p class="mb-0 text-muted small">
+                            * 同義詞和反義詞請用逗號分隔<br>
+                            * 只有英文單字和中文翻譯是必填的
+                        </p>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-circle"></i> 批次新增
+                        </button>
+                        <button type="reset" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-clockwise"></i> 清空
+                        </button>
+                        <button type="button" class="btn btn-outline-info" id="previewBtn">
+                            <i class="bi bi-eye"></i> 預覽
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card sticky-top" style="top: 2rem;">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-lightbulb"></i> 使用範例
+                </h6>
+            </div>
+            <div class="card-body">
+                <h6>基本格式範例：</h6>
+                <div class="bg-light p-2 rounded mb-3">
+                    <code>
+                        apple|蘋果<br>
+                        banana|香蕉<br>
+                        orange|橘子
+                    </code>
+                </div>
+
+                <h6>完整格式範例：</h6>
+                <div class="bg-light p-2 rounded mb-3">
+                    <code>
+                        beautiful|美麗的|having beauty; pleasing to the senses|/ˈbjuːtɪfʊl/|She is a beautiful woman.|pretty,lovely|ugly,hideous<br>
+                        intelligent|聰明的|having or showing intelligence|/ɪnˈtelɪdʒənt/|He is very intelligent.|smart,clever|stupid,dumb
+                    </code>
+                </div>
+
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>注意：</strong>
+                    <ul class="mb-0 mt-2">
+                        <li>重複的單字會被自動跳過</li>
+                        <li>格式錯誤的行會顯示錯誤訊息</li>
+                        <li>建議先使用「預覽」功能檢查格式</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="card-footer">
+                <button type="button" class="btn btn-outline-primary btn-sm w-100" id="loadExampleBtn">
+                    <i class="bi bi-file-text"></i> 載入範例
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 預覽 Modal -->
+<div class="modal fade" id="previewModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-eye"></i> 批次新增預覽
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="previewContent">
+                    <!-- 預覽內容會在這裡顯示 -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
+                <button type="button" class="btn btn-success" id="confirmAddBtn">
+                    <i class="bi bi-check-circle"></i> 確認新增
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 載入範例
+document.getElementById('loadExampleBtn').addEventListener('click', function() {
+    const exampleText = `apple|蘋果|a round fruit with red or green skin|/ˈæpəl/|I eat an apple every day.|fruit|
+banana|香蕉|a long curved fruit with yellow skin|/bəˈnɑːnə/|Bananas are rich in potassium.|fruit|
+beautiful|美麗的|having beauty; pleasing to the senses|/ˈbjuːtɪfʊl/|She is a beautiful woman.|pretty,lovely|ugly,hideous
+intelligent|聰明的|having or showing intelligence|/ɪnˈtelɪdʒənt/|He is very intelligent.|smart,clever|stupid,dumb`;
+    
+    document.getElementById('words_text').value = exampleText;
+    updateWordCount();
+});
+
+// 預覽功能
+document.getElementById('previewBtn').addEventListener('click', function() {
+    const wordsText = document.getElementById('words_text').value.trim();
+    
+    if (!wordsText) {
+        showWarning('請先輸入要新增的單字');
+        return;
+    }
+    
+    const lines = wordsText.split('\n').filter(line => line.trim());
+    const previewContent = document.getElementById('previewContent');
+    
+    let validWords = [];
+    let invalidLines = [];
+    
+    lines.forEach((line, index) => {
+        const parts = line.trim().split('|').map(part => part.trim());
+        
+        if (parts.length < 2) {
+            invalidLines.push({
+                lineNumber: index + 1,
+                content: line,
+                error: '至少需要「英文單字|中文翻譯」'
+            });
+            return;
+        }
+        
+        if (!parts[0] || !parts[1]) {
+            invalidLines.push({
+                lineNumber: index + 1,
+                content: line,
+                error: '英文單字和中文翻譯不能為空'
+            });
+            return;
+        }
+        
+        validWords.push({
+            word: parts[0],
+            chinese_meaning: parts[1],
+            english_meaning: parts[2] || '',
+            phonetic: parts[3] || '',
+            example_sentence: parts[4] || '',
+            synonyms: parts[5] || '',
+            antonyms: parts[6] || ''
+        });
+    });
+    
+    let html = '';
+    
+    // 顯示統計
+    html += `<div class="alert alert-info">
+        <h6><i class="bi bi-info-circle"></i> 預覽統計</h6>
+        <p class="mb-0">
+            總行數：${lines.length} | 
+            有效單字：<span class="text-success">${validWords.length}</span> | 
+            錯誤行數：<span class="text-danger">${invalidLines.length}</span>
+        </p>
+    </div>`;
+    
+    // 顯示錯誤行
+    if (invalidLines.length > 0) {
+        html += `<div class="alert alert-danger">
+            <h6><i class="bi bi-exclamation-triangle"></i> 格式錯誤的行</h6>
+            <ul class="mb-0">`;
+        invalidLines.forEach(invalid => {
+            html += `<li>第 ${invalid.lineNumber} 行：${invalid.error}<br><code>${invalid.content}</code></li>`;
+        });
+        html += `</ul></div>`;
+    }
+    
+    // 顯示有效單字
+    if (validWords.length > 0) {
+        html += `<div class="alert alert-success">
+            <h6><i class="bi bi-check-circle"></i> 將要新增的單字</h6>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>英文單字</th>
+                        <th>中文翻譯</th>
+                        <th>英文定義</th>
+                        <th>音標</th>
+                        <th>例句</th>
+                        <th>同義詞</th>
+                        <th>反義詞</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+        
+        validWords.forEach(word => {
+            html += `<tr>
+                <td><strong>${word.word}</strong></td>
+                <td>${word.chinese_meaning}</td>
+                <td>${word.english_meaning || '<span class="text-muted">未提供</span>'}</td>
+                <td>${word.phonetic || '<span class="text-muted">未提供</span>'}</td>
+                <td>${word.example_sentence || '<span class="text-muted">未提供</span>'}</td>
+                <td>${word.synonyms || '<span class="text-muted">未提供</span>'}</td>
+                <td>${word.antonyms || '<span class="text-muted">未提供</span>'}</td>
+            </tr>`;
+        });
+        
+        html += `</tbody></table></div>`;
+    }
+    
+    previewContent.innerHTML = html;
+    
+    // 顯示 Modal
+    const modal = new bootstrap.Modal(document.getElementById('previewModal'));
+    modal.show();
+    
+    // 設置確認按鈕狀態
+    const confirmBtn = document.getElementById('confirmAddBtn');
+    if (validWords.length > 0) {
+        confirmBtn.disabled = false;
+    } else {
+        confirmBtn.disabled = true;
+    }
+});
+
+// 確認新增
+document.getElementById('confirmAddBtn').addEventListener('click', function() {
+    // 關閉預覽 Modal
+    bootstrap.Modal.getInstance(document.getElementById('previewModal')).hide();
+    
+    // 提交表單
+    document.getElementById('batchAddForm').submit();
+});
+
+// 計算單字數量
+function updateWordCount() {
+    const wordsText = document.getElementById('words_text').value.trim();
+    const lines = wordsText ? wordsText.split('\n').filter(line => line.trim()).length : 0;
+    
+    // 更新計數顯示（如果有的話）
+    const countElement = document.getElementById('wordCount');
+    if (countElement) {
+        countElement.textContent = lines;
+    }
+}
+
+// 監聽文本變化
+document.getElementById('words_text').addEventListener('input', updateWordCount);
+
+// 表單提交處理
+document.getElementById('batchAddForm').addEventListener('submit', function(e) {
+    const submitBtn = this.querySelector('button[type="submit"]');
+    submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> 處理中...';
+    submitBtn.disabled = true;
+});
+
+// 頁面載入時更新計數
+document.addEventListener('DOMContentLoaded', updateWordCount);
+</script>
+{% endblock %}

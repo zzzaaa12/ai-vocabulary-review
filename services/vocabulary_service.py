@@ -151,6 +151,78 @@ class VocabularyService:
 
         return word
 
+    def add_words_batch(self, words: List[Word]) -> Dict[str, Any]:
+        """
+        Add multiple words to the vocabulary in batch.
+
+        Args:
+            words: List of Word instances to add
+
+        Returns:
+            Dictionary with batch operation results:
+            {
+                'success_count': int,
+                'error_count': int,
+                'total_count': int,
+                'successful_words': List[Word],
+                'failed_words': List[Dict],
+                'duplicate_words': List[str]
+            }
+        """
+        if not words:
+            return {
+                'success_count': 0,
+                'error_count': 0,
+                'total_count': 0,
+                'successful_words': [],
+                'failed_words': [],
+                'duplicate_words': []
+            }
+
+        vocab_data = self._load_data()
+        successful_words = []
+        failed_words = []
+        duplicate_words = []
+
+        for word in words:
+            try:
+                # Validate word data
+                validation_errors = word.validate()
+                if validation_errors:
+                    failed_words.append({
+                        'word': word.word,
+                        'error': f"Validation failed: {', '.join(validation_errors)}"
+                    })
+                    continue
+
+                # Check for duplicate words (both in existing data and current batch)
+                if self.word_exists(word.word) or any(w.word.lower() == word.word.lower() for w in successful_words):
+                    duplicate_words.append(word.word)
+                    continue
+
+                # Add word to batch
+                vocab_data.add_word(word)
+                successful_words.append(word)
+
+            except Exception as e:
+                failed_words.append({
+                    'word': word.word,
+                    'error': str(e)
+                })
+
+        # Save all successful words at once
+        if successful_words:
+            self._save_data(vocab_data)
+
+        return {
+            'success_count': len(successful_words),
+            'error_count': len(failed_words),
+            'total_count': len(words),
+            'successful_words': successful_words,
+            'failed_words': failed_words,
+            'duplicate_words': duplicate_words
+        }
+
     def update_word(self, word_id: str, **kwargs) -> Optional[Word]:
         """
         Update an existing word.
