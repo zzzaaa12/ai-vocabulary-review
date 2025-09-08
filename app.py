@@ -37,6 +37,10 @@ def create_app():
     # Initialize vocabulary service
     app.vocabulary_service = VocabularyService(app.config['VOCABULARY_FILE'])
 
+    # Initialize English words service
+    from services.english_words_service import EnglishWordsService
+    app.english_words_service = EnglishWordsService()
+
     # Register routes
     register_routes(app)
 
@@ -201,14 +205,14 @@ def register_routes(app):
             try:
                 # Get form data
                 words_text = request.form.get('words_text', '').strip()
-                
+
                 if not words_text:
                     flash('請輸入要新增的單字', 'error')
                     return render_template('add_batch.html')
 
                 # Parse words from text input
                 lines = [line.strip() for line in words_text.split('\n') if line.strip()]
-                
+
                 if not lines:
                     flash('請輸入要新增的單字', 'error')
                     return render_template('add_batch.html')
@@ -220,11 +224,11 @@ def register_routes(app):
                         # Parse line format: "word|chinese_meaning|english_meaning|phonetic|example_sentence|synonyms|antonyms"
                         # Minimum required: "word|chinese_meaning"
                         parts = [part.strip() for part in line.split('|')]
-                        
+
                         if len(parts) < 2:
                             flash(f'第 {i} 行格式錯誤：至少需要「英文單字|中文翻譯」', 'error')
                             continue
-                        
+
                         word = parts[0]
                         chinese_meaning = parts[1]
                         english_meaning = parts[2] if len(parts) > 2 else ''
@@ -232,11 +236,11 @@ def register_routes(app):
                         example_sentence = parts[4] if len(parts) > 4 else ''
                         synonyms_str = parts[5] if len(parts) > 5 else ''
                         antonyms_str = parts[6] if len(parts) > 6 else ''
-                        
+
                         # Parse synonyms and antonyms
                         synonyms = [s.strip() for s in synonyms_str.split(',') if s.strip()] if synonyms_str else []
                         antonyms = [a.strip() for a in antonyms_str.split(',') if a.strip()] if antonyms_str else []
-                        
+
                         # Create Word object
                         from models.vocabulary import Word
                         new_word = Word(
@@ -248,9 +252,9 @@ def register_routes(app):
                             synonyms=synonyms,
                             antonyms=antonyms
                         )
-                        
+
                         words_to_add.append(new_word)
-                        
+
                     except Exception as e:
                         flash(f'第 {i} 行處理錯誤：{str(e)}', 'error')
                         continue
@@ -261,22 +265,22 @@ def register_routes(app):
 
                 # Batch add words using vocabulary service
                 result = app.vocabulary_service.add_words_batch(words_to_add)
-                
+
                 # Generate result messages
                 if result['success_count'] > 0:
                     flash(f'成功新增 {result["success_count"]} 個單字！', 'success')
-                
+
                 if result['duplicate_words']:
                     flash(f'跳過重複單字：{", ".join(result["duplicate_words"])}', 'warning')
-                
+
                 if result['failed_words']:
                     for failed in result['failed_words']:
                         flash(f'「{failed["word"]}」新增失敗：{failed["error"]}', 'error')
-                
+
                 # If all successful, redirect to index
                 if result['error_count'] == 0 and result['success_count'] > 0:
                     return redirect(url_for('index'))
-                
+
                 # Otherwise stay on the form with error messages
                 return render_template('add_batch.html')
 
@@ -298,22 +302,22 @@ def register_routes(app):
             try:
                 # Get form data
                 action = request.form.get('action', 'generate')
-                
+
                 if action == 'generate':
                     # Step 1: Generate AI content
                     words_text = request.form.get('words_text', '').strip()
-                    
+
                     if not words_text:
                         flash('請輸入要新增的單字', 'error')
                         return render_template('add_batch_ai.html')
 
                     # Parse words from text input
                     words = [word.strip() for word in words_text.split('\n') if word.strip()]
-                    
+
                     if not words:
                         flash('請輸入要新增的單字', 'error')
                         return render_template('add_batch_ai.html')
-                    
+
                     # Remove duplicates while preserving order
                     unique_words = []
                     seen = set()
@@ -321,31 +325,31 @@ def register_routes(app):
                         if word.lower() not in seen:
                             unique_words.append(word)
                             seen.add(word.lower())
-                    
+
                     if len(unique_words) != len(words):
                         flash(f'已移除 {len(words) - len(unique_words)} 個重複單字', 'info')
-                    
+
                     # Store words in session for AI generation
                     session['batch_words'] = unique_words
-                    
-                    return render_template('add_batch_ai.html', 
-                                         words=unique_words, 
+
+                    return render_template('add_batch_ai.html',
+                                         words=unique_words,
                                          step='generate')
-                
+
                 elif action == 'save':
                     # Step 2: Save AI generated results
                     ai_results = request.form.get('ai_results')
                     if not ai_results:
                         flash('沒有 AI 生成的結果可以儲存', 'error')
                         return render_template('add_batch_ai.html')
-                    
+
                     import json
                     try:
                         results_data = json.loads(ai_results)
                     except json.JSONDecodeError:
                         flash('AI 結果資料格式錯誤', 'error')
                         return render_template('add_batch_ai.html')
-                    
+
                     # Create Word objects from AI results
                     words_to_add = []
                     for result in results_data:
@@ -364,32 +368,32 @@ def register_routes(app):
                                 words_to_add.append(new_word)
                             except Exception as e:
                                 flash(f'處理單字「{result.get("word", "未知")}」時發生錯誤：{str(e)}', 'error')
-                    
+
                     if not words_to_add:
                         flash('沒有有效的單字可以新增', 'error')
                         return render_template('add_batch_ai.html')
-                    
+
                     # Batch add words using vocabulary service
                     result = app.vocabulary_service.add_words_batch(words_to_add)
-                    
+
                     # Generate result messages
                     if result['success_count'] > 0:
                         flash(f'成功新增 {result["success_count"]} 個單字！', 'success')
-                    
+
                     if result['duplicate_words']:
                         flash(f'跳過重複單字：{", ".join(result["duplicate_words"])}', 'warning')
-                    
+
                     if result['failed_words']:
                         for failed in result['failed_words']:
                             flash(f'「{failed["word"]}」新增失敗：{failed["error"]}', 'error')
-                    
+
                     # Clear session data
                     session.pop('batch_words', None)
-                    
+
                     # If all successful, redirect to index
                     if result['error_count'] == 0 and result['success_count'] > 0:
                         return redirect(url_for('index'))
-                    
+
                     return render_template('add_batch_ai.html')
 
             except Exception as e:
@@ -582,6 +586,75 @@ def register_routes(app):
             return jsonify({
                 'words': [],
                 'message': f'搜尋時發生錯誤: {str(e)}',
+                'query': query,
+                'count': 0
+            })
+
+    @app.route('/api/autocomplete')
+    @require_auth_api
+    def autocomplete():
+        """
+        提供自動完成候選單字。
+        用於搜尋框的即時建議功能。
+        """
+        query = request.args.get('q', '').strip()
+        limit = int(request.args.get('limit', 10))  # 預設最多回傳10個候選
+
+        if not query:
+            return jsonify({'suggestions': []})
+
+        if len(query) < 2:  # 至少輸入2個字元才開始提供建議
+            return jsonify({'suggestions': []})
+
+        try:
+            # 使用詞彙服務搜尋候選單字
+            suggestions = app.vocabulary_service.get_autocomplete_suggestions(query, limit)
+
+            return jsonify({
+                'suggestions': suggestions,
+                'query': query,
+                'count': len(suggestions)
+            })
+
+        except Exception as e:
+            return jsonify({
+                'suggestions': [],
+                'error': f'取得建議時發生錯誤: {str(e)}',
+                'query': query,
+                'count': 0
+            })
+
+    @app.route('/api/word-suggestions')
+    @require_auth_api
+    def word_suggestions():
+        """
+        提供英文單字建議（來自大型英文字典）。
+        用於新增單字時的智能提示。
+        """
+        query = request.args.get('q', '').strip()
+        limit = int(request.args.get('limit', 10))
+
+        if not query:
+            return jsonify({'suggestions': []})
+
+        if len(query) < 2:
+            return jsonify({'suggestions': []})
+
+        try:
+            # 使用英文單字服務取得建議
+            suggestions = app.english_words_service.get_suggestions(query, limit)
+
+            return jsonify({
+                'suggestions': suggestions,
+                'query': query,
+                'count': len(suggestions),
+                'source': 'english_dictionary'
+            })
+
+        except Exception as e:
+            return jsonify({
+                'suggestions': [],
+                'error': f'取得英文單字建議時發生錯誤: {str(e)}',
                 'query': query,
                 'count': 0
             })

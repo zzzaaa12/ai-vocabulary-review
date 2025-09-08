@@ -29,11 +29,19 @@
                     <!-- 英文單字 -->
                     <div class="row mb-3">
                         <div class="col-md-8">
-                            <div class="form-floating">
-                                <input type="text" class="form-control" id="word" name="word" placeholder="請輸入英文單字" required>
-                                <label for="word">
-                                    <i class="bi bi-type"></i> 英文單字 *
-                                </label>
+                            <div class="word-input-container position-relative">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" id="word" name="word" placeholder="請輸入英文單字" required autocomplete="off">
+                                    <label for="word">
+                                        <i class="bi bi-type"></i> 英文單字 *
+                                    </label>
+                                </div>
+                                <!-- 自動完成候選清單 -->
+                                <div class="word-autocomplete-dropdown" id="wordAutocompleteDropdown" style="display: none;">
+                                    <div class="word-autocomplete-list" id="wordAutocompleteList">
+                                        <!-- 候選項目會動態插入這裡 -->
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         <div class="col-md-4">
@@ -175,7 +183,280 @@
 {% endblock %}
 
 {% block extra_js %}
+<style>
+/* 新增單字頁面自動完成樣式 */
+.word-autocomplete-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 9999;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 0 0 8px 8px;
+    border-top: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.word-autocomplete-list {
+    padding: 0;
+    margin: 0;
+}
+
+.word-autocomplete-item {
+    padding: 12px 15px;
+    cursor: pointer;
+    border-bottom: 1px solid #f8f9fa;
+    transition: background-color 0.2s ease;
+    display: flex;
+    align-items: center;
+}
+
+.word-autocomplete-item:hover,
+.word-autocomplete-item.active {
+    background-color: rgba(var(--theme-primary-rgb, 13, 110, 253), 0.1);
+    color: var(--theme-primary);
+}
+
+.word-autocomplete-item:last-child {
+    border-bottom: none;
+}
+
+.word-autocomplete-item .word-text {
+    font-weight: 500;
+    color: #333;
+    font-size: 1.05em;
+}
+
+.word-autocomplete-item:hover .word-text,
+.word-autocomplete-item.active .word-text {
+    color: var(--theme-primary);
+}
+
+.duplicate-warning {
+    background-color: #fff3cd;
+    border-color: #ffeaa7;
+    color: #856404;
+}
+
+.dictionary-suggestion {
+    background-color: #e7f3ff;
+    border-color: #b3d9ff;
+    color: #004085;
+}
+
+.dictionary-suggestion:hover {
+    background-color: #cce7ff;
+}
+
+.suggestion-section-header {
+    padding: 8px 12px;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    font-weight: 600;
+    font-size: 0.85em;
+    color: #495057;
+    margin: 0;
+}
+
+.suggestion-section-divider {
+    height: 1px;
+    background-color: #dee2e6;
+    margin: 0;
+}
+</style>
+
 <script>
+// 新增單字頁面自動完成功能
+let wordAutocompleteTimeout;
+let wordSelectedIndex = -1;
+let wordCurrentSuggestions = [];
+
+// 初始化自動完成功能
+function initWordAutocomplete() {
+    const wordInput = document.getElementById('word');
+    const autocompleteDropdown = document.getElementById('wordAutocompleteDropdown');
+    const autocompleteList = document.getElementById('wordAutocompleteList');
+    const wordContainer = document.querySelector('.word-input-container');
+
+    // 監聽單字輸入
+    wordInput.addEventListener('input', function() {
+        const query = this.value.trim();
+        console.log('Word input changed:', query);
+
+        // 清除之前的延遲
+        clearTimeout(wordAutocompleteTimeout);
+
+        if (query.length >= 2) {
+            wordAutocompleteTimeout = setTimeout(() => {
+                fetchWordAutocompleteSuggestions(query);
+            }, 300);
+        } else {
+            hideWordAutocomplete();
+        }
+    });
+
+    // 鍵盤導航
+    wordInput.addEventListener('keydown', function(e) {
+        if (isWordAutocompleteVisible()) {
+            switch(e.key) {
+                case 'ArrowDown':
+                    e.preventDefault();
+                    wordSelectedIndex = Math.min(wordSelectedIndex + 1, wordCurrentSuggestions.length - 1);
+                    updateWordAutocompleteSelection();
+                    break;
+                case 'ArrowUp':
+                    e.preventDefault();
+                    wordSelectedIndex = Math.max(wordSelectedIndex - 1, -1);
+                    updateWordAutocompleteSelection();
+                    break;
+                case 'Enter':
+                    e.preventDefault();
+                    if (wordSelectedIndex >= 0) {
+                        selectWordSuggestion(wordCurrentSuggestions[wordSelectedIndex]);
+                    } else {
+                        hideWordAutocomplete();
+                    }
+                    break;
+                case 'Escape':
+                    e.preventDefault();
+                    hideWordAutocomplete();
+                    break;
+            }
+        }
+    });
+
+    // 點擊其他地方隱藏
+    document.addEventListener('click', function(e) {
+        if (!wordContainer.contains(e.target)) {
+            hideWordAutocomplete();
+        }
+    });
+}
+
+function fetchWordAutocompleteSuggestions(query) {
+    console.log('Fetching word autocomplete for:', query);
+
+    // 只請求英文字典建議
+    fetch(`/api/word-suggestions?q=${encodeURIComponent(query)}&limit=10`)
+        .then(response => response.json())
+        .then(data => {
+            console.log('Dictionary response:', data);
+
+            const dictionarySuggestions = data.suggestions || [];
+
+            // 只顯示字典建議
+            wordCurrentSuggestions = dictionarySuggestions;
+            displayDictionaryOnlySuggestions(dictionarySuggestions);
+        })
+        .catch(error => {
+            console.error('單字建議錯誤:', error);
+            hideWordAutocomplete();
+        });
+}
+
+function displayDictionaryOnlySuggestions(dictionarySuggestions) {
+    const autocompleteList = document.getElementById('wordAutocompleteList');
+
+    if (dictionarySuggestions.length === 0) {
+        hideWordAutocomplete();
+        return;
+    }
+
+    wordSelectedIndex = -1;
+    let html = '';
+
+    // 只顯示英文字典建議
+    dictionarySuggestions.forEach((suggestion, index) => {
+        html += `
+            <div class="word-autocomplete-item dictionary-suggestion" data-index="${index}" data-type="dictionary">
+                <div class="word-text">${suggestion.word}</div>
+            </div>
+        `;
+    });
+
+    autocompleteList.innerHTML = html;
+    showWordAutocomplete();
+
+    // 移除舊的事件監聽器並添加新的
+    autocompleteList.removeEventListener('click', handleWordAutocompleteClick);
+    autocompleteList.addEventListener('click', handleWordAutocompleteClick);
+}
+
+function handleWordAutocompleteClick(e) {
+    e.preventDefault();
+    const item = e.target.closest('.word-autocomplete-item');
+    if (item) {
+        const index = parseInt(item.dataset.index);
+        const type = item.dataset.type;
+        selectWordSuggestion(wordCurrentSuggestions[index], type);
+    }
+}
+
+function selectWordSuggestion(suggestion, type) {
+    const wordInput = document.getElementById('word');
+    wordInput.value = suggestion.word;
+    hideWordAutocomplete();
+
+    // 只有重複單字才顯示警告
+    if (type === 'existing') {
+        showDuplicateWarning(suggestion);
+    } else {
+        // 清除任何現有的警告
+        const existingWarning = document.querySelector('.duplicate-word-warning');
+        if (existingWarning) {
+            existingWarning.remove();
+        }
+    }
+}
+
+function showDuplicateWarning(suggestion) {
+    // 移除舊的警告
+    const existingWarning = document.querySelector('.duplicate-word-warning');
+    if (existingWarning) {
+        existingWarning.remove();
+    }
+
+    // 創建新的警告
+    const warning = document.createElement('div');
+    warning.className = 'alert alert-warning duplicate-word-warning mt-2';
+    warning.innerHTML = `
+        <i class="bi bi-exclamation-triangle"></i>
+        <strong>注意：</strong>單字「${suggestion.word}」已存在！
+        <br><small>現有翻譯：${suggestion.chinese_meaning}</small>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+
+    // 插入到單字輸入框下方
+    const wordContainer = document.querySelector('.word-input-container');
+    wordContainer.parentNode.appendChild(warning);
+}
+
+function updateWordAutocompleteSelection() {
+    const items = document.querySelectorAll('.word-autocomplete-item');
+    items.forEach((item, index) => {
+        item.classList.toggle('active', index === wordSelectedIndex);
+    });
+}
+
+function showWordAutocomplete() {
+    const autocompleteDropdown = document.getElementById('wordAutocompleteDropdown');
+    autocompleteDropdown.style.display = 'block';
+}
+
+function hideWordAutocomplete() {
+    const autocompleteDropdown = document.getElementById('wordAutocompleteDropdown');
+    autocompleteDropdown.style.display = 'none';
+    wordSelectedIndex = -1;
+}
+
+function isWordAutocompleteVisible() {
+    const autocompleteDropdown = document.getElementById('wordAutocompleteDropdown');
+    return autocompleteDropdown.style.display === 'block';
+}
+
 // 檢查 AI 狀態
 function checkAiStatus() {
     const aiBtn = document.getElementById('aiGenerateBtn');
@@ -443,7 +724,10 @@ document.getElementById('addWordForm').addEventListener('submit', function(e) {
     submitBtn.disabled = true;
 });
 
-// 頁面載入時檢查 AI 狀態
-document.addEventListener('DOMContentLoaded', checkAiStatus);
+// 頁面載入時初始化功能
+document.addEventListener('DOMContentLoaded', function() {
+    checkAiStatus();
+    initWordAutocomplete();
+});
 </script>
 {% endblock %}

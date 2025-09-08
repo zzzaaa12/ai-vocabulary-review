@@ -18,9 +18,161 @@
 
 .quick-search-container .btn-primary {
     border-radius: 0 8px 8px 0;
-    border: 2px solid var(--theme-primary);
-    border-left: none;
-    padding: 0.75rem 1.5rem;
+}
+
+/* 自動完成下拉選單樣式 */
+.autocomplete-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 9999;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 0 0 8px 8px;
+    border-top: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.autocomplete-list {
+    padding: 0;
+    margin: 0;
+}
+
+.autocomplete-item {
+    padding: 10px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #f8f9fa;
+    transition: background-color 0.2s ease;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.autocomplete-item:hover,
+.autocomplete-item.active {
+    background-color: var(--theme-primary-rgb, 13, 110, 253);
+    background-color: rgba(var(--theme-primary-rgb, 13, 110, 253), 0.1);
+    color: var(--theme-primary);
+}
+
+.autocomplete-item:last-child {
+    border-bottom: none;
+}
+
+.autocomplete-item .word-text {
+    font-weight: 500;
+    color: #333;
+}
+
+.autocomplete-item .chinese-text {
+    color: #666;
+    font-size: 0.9em;
+}
+
+.autocomplete-item .match-badge {
+    font-size: 0.75em;
+    padding: 2px 6px;
+    border-radius: 10px;
+    background-color: var(--theme-primary);
+    color: white;
+}
+
+.autocomplete-item:hover .word-text,
+.autocomplete-item.active .word-text {
+    color: var(--theme-primary);
+}
+
+.autocomplete-item:hover .chinese-text,
+.autocomplete-item.active .chinese-text {
+    color: var(--theme-primary);
+    opacity: 0.8;
+}
+
+.autocomplete-empty {
+    padding: 12px;
+    text-align: center;
+    color: #666;
+    font-style: italic;
+}
+
+/* 搜尋容器樣式調整 */
+.search-container {
+    position: relative;
+}
+
+.search-container .input-group input:focus {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.search-container.has-suggestions .input-group input {
+    border-bottom-left-radius: 0;
+}
+
+.search-container.has-suggestions .input-group button {
+    border-bottom-right-radius: 0;
+}
+
+/* 快速搜尋自動完成樣式 */
+.quick-autocomplete-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 9999;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 0 0 8px 8px;
+    border-top: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.quick-autocomplete-list {
+    padding: 0;
+    margin: 0;
+}
+
+.quick-autocomplete-item {
+    padding: 12px 20px;
+    cursor: pointer;
+    border-bottom: 1px solid #f8f9fa;
+    transition: background-color 0.2s ease;
+    display: flex;
+    align-items: center;
+}
+
+.quick-autocomplete-item:hover,
+.quick-autocomplete-item.active {
+    background-color: rgba(var(--theme-primary-rgb, 13, 110, 253), 0.1);
+    color: var(--theme-primary);
+}
+
+.quick-autocomplete-item:last-child {
+    border-bottom: none;
+}
+
+.quick-autocomplete-item .word-text {
+    font-weight: 500;
+    color: #333;
+    font-size: 1.1em;
+}
+
+.quick-autocomplete-item:hover .word-text,
+.quick-autocomplete-item.active .word-text {
+    color: var(--theme-primary);
+}
+
+.quick-input-container.has-suggestions .input-group input {
+    border-bottom-left-radius: 0;
+}
+
+.quick-input-container.has-suggestions .input-group button {
+    border-bottom-right-radius: 0;
 }
 
 #quickSearchStatus .alert {
@@ -116,11 +268,19 @@
                     <p class="text-muted mb-0">輸入英文單字，AI 立即生成完整資訊</p>
                 </div>
                 <div class="col-md-8">
-                    <div class="input-group input-group-lg mb-2">
-                        <input type="text" class="form-control" id="quickSearchWord" placeholder="輸入英文單字..." autocomplete="off">
-                        <button class="btn btn-primary" type="button" id="quickAiBtn">
-                            <i class="bi bi-robot"></i> AI 查詢
-                        </button>
+                    <div class="quick-input-container position-relative">
+                        <div class="input-group input-group-lg mb-2">
+                            <input type="text" class="form-control" id="quickSearchWord" placeholder="輸入英文單字..." autocomplete="off">
+                            <button class="btn btn-primary" type="button" id="quickAiBtn">
+                                <i class="bi bi-robot"></i> AI 查詢
+                            </button>
+                        </div>
+                        <!-- 快速搜尋自動完成候選清單 -->
+                        <div class="quick-autocomplete-dropdown" id="quickAutocompleteDropdown" style="display: none;">
+                            <div class="quick-autocomplete-list" id="quickAutocompleteList">
+                                <!-- 候選項目會動態插入這裡 -->
+                            </div>
+                        </div>
                     </div>
                     <!-- 固定高度的狀態區域 -->
                     <div id="quickSearchStatus" style="height: 40px; overflow: hidden;"></div>
@@ -139,14 +299,22 @@
                 </h5>
                 <div class="d-flex gap-2">
                     <!-- 搜尋框 -->
-                    <div class="input-group" style="max-width: 300px;">
-                        <input type="text" class="form-control form-control-sm" id="searchInput" placeholder="搜尋單字或中文..." autocomplete="off">
-                        <button class="btn btn-outline-primary btn-sm" type="button" id="searchBtn">
-                            <i class="bi bi-search"></i>
-                        </button>
-                        <button class="btn btn-outline-secondary btn-sm" type="button" id="clearSearchBtn" style="display: none;">
-                            <i class="bi bi-x"></i>
-                        </button>
+                    <div class="search-container position-relative" style="max-width: 300px;">
+                        <div class="input-group">
+                            <input type="text" class="form-control form-control-sm" id="searchInput" placeholder="搜尋單字或中文..." autocomplete="off">
+                            <button class="btn btn-outline-primary btn-sm" type="button" id="searchBtn">
+                                <i class="bi bi-search"></i>
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm" type="button" id="clearSearchBtn" style="display: none;">
+                                <i class="bi bi-x"></i>
+                            </button>
+                        </div>
+                        <!-- 自動完成候選清單 -->
+                        <div class="autocomplete-dropdown" id="autocompleteDropdown" style="display: none;">
+                            <div class="autocomplete-list" id="autocompleteList">
+                                <!-- 候選項目會動態插入這裡 -->
+                            </div>
+                        </div>
                     </div>
 
                     <!-- 時間篩選 -->
@@ -433,18 +601,38 @@
 
 {% block extra_js %}
 <script>
-// 快速 AI 查詢功能
+// 快速 AI 查詢功能與自動完成
 document.addEventListener('DOMContentLoaded', function() {
     const quickSearchWord = document.getElementById('quickSearchWord');
     const quickAiBtn = document.getElementById('quickAiBtn');
     const quickSearchStatus = document.getElementById('quickSearchStatus');
+    const quickAutocompleteDropdown = document.getElementById('quickAutocompleteDropdown');
+    const quickAutocompleteList = document.getElementById('quickAutocompleteList');
+    const quickInputContainer = document.querySelector('.quick-input-container');
+
+    let quickAutocompleteTimeout;
+    let quickSelectedIndex = -1;
+    let quickCurrentSuggestions = [];
 
     // 監聽輸入框
     quickSearchWord.addEventListener('input', function() {
-        if (this.value.trim()) {
+        const query = this.value.trim();
+
+        if (query) {
             quickAiBtn.disabled = false;
+
+            // 清除之前的延遲
+            clearTimeout(quickAutocompleteTimeout);
+
+            // 自動完成功能
+            if (query.length >= 2) {
+                quickAutocompleteTimeout = setTimeout(() => {
+                    fetchQuickAutocompleteSuggestions(query);
+                }, 300);
+            }
         } else {
             quickAiBtn.disabled = true;
+            hideQuickAutocomplete();
         }
     });
 
@@ -459,15 +647,126 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelector('.quick-search-container').style.boxShadow = 'none';
     });
 
-    // 監聽 Enter 鍵
-    quickSearchWord.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter' && this.value.trim()) {
+    // 監聽鍵盤事件（包括方向鍵導航）
+    quickSearchWord.addEventListener('keydown', function(e) {
+        if (isQuickAutocompleteVisible()) {
+            switch(e.key) {
+                case 'ArrowDown':
+                    e.preventDefault();
+                    quickSelectedIndex = Math.min(quickSelectedIndex + 1, quickCurrentSuggestions.length - 1);
+                    updateQuickAutocompleteSelection();
+                    break;
+                case 'ArrowUp':
+                    e.preventDefault();
+                    quickSelectedIndex = Math.max(quickSelectedIndex - 1, -1);
+                    updateQuickAutocompleteSelection();
+                    break;
+                case 'Enter':
+                    e.preventDefault();
+                    if (quickSelectedIndex >= 0) {
+                        selectQuickSuggestion(quickCurrentSuggestions[quickSelectedIndex]);
+                    } else {
+                        hideQuickAutocomplete();
+                        performQuickSearch();
+                    }
+                    break;
+                case 'Escape':
+                    e.preventDefault();
+                    hideQuickAutocomplete();
+                    break;
+            }
+        } else if (e.key === 'Enter' && this.value.trim()) {
             performQuickSearch();
+        }
+    });
+
+    // 點擊其他地方隱藏自動完成
+    document.addEventListener('click', function(e) {
+        if (!quickInputContainer.contains(e.target)) {
+            hideQuickAutocomplete();
         }
     });
 
     // 監聽按鈕點擊
     quickAiBtn.addEventListener('click', performQuickSearch);
+
+    // 快速搜尋自動完成相關函數
+    function fetchQuickAutocompleteSuggestions(query) {
+        console.log('Fetching quick autocomplete for:', query);
+        fetch(`/api/word-suggestions?q=${encodeURIComponent(query)}&limit=8`)
+            .then(response => response.json())
+            .then(data => {
+                console.log('Quick autocomplete response:', data);
+                quickCurrentSuggestions = data.suggestions || [];
+                displayQuickAutocompleteSuggestions(quickCurrentSuggestions);
+            })
+            .catch(error => {
+                console.error('快速搜尋自動完成錯誤:', error);
+                hideQuickAutocomplete();
+            });
+    }
+
+    function displayQuickAutocompleteSuggestions(suggestions) {
+        if (suggestions.length === 0) {
+            hideQuickAutocomplete();
+            return;
+        }
+
+        quickSelectedIndex = -1;
+        let html = '';
+
+        suggestions.forEach((suggestion, index) => {
+            html += `
+                <div class="quick-autocomplete-item" data-index="${index}">
+                    <div class="word-text">${suggestion.word}</div>
+                </div>
+            `;
+        });
+
+        quickAutocompleteList.innerHTML = html;
+        showQuickAutocomplete();
+
+        // 添加點擊事件
+        quickAutocompleteList.removeEventListener('click', handleQuickAutocompleteClick);
+        quickAutocompleteList.addEventListener('click', handleQuickAutocompleteClick);
+    }
+
+    function handleQuickAutocompleteClick(e) {
+        e.preventDefault();
+        const item = e.target.closest('.quick-autocomplete-item');
+        if (item) {
+            const index = parseInt(item.dataset.index);
+            selectQuickSuggestion(quickCurrentSuggestions[index]);
+        }
+    }
+
+    function selectQuickSuggestion(suggestion) {
+        quickSearchWord.value = suggestion.word;
+        hideQuickAutocomplete();
+        performQuickSearch();
+    }
+
+    function updateQuickAutocompleteSelection() {
+        const items = quickAutocompleteList.querySelectorAll('.quick-autocomplete-item');
+        items.forEach((item, index) => {
+            item.classList.toggle('active', index === quickSelectedIndex);
+        });
+    }
+
+    function showQuickAutocomplete() {
+        quickAutocompleteDropdown.style.display = 'block';
+        quickInputContainer.classList.add('has-suggestions');
+    }
+
+    function hideQuickAutocomplete() {
+        quickAutocompleteDropdown.style.display = 'none';
+        quickInputContainer.classList.remove('has-suggestions');
+        quickSelectedIndex = -1;
+    }
+
+    function isQuickAutocompleteVisible() {
+        return quickAutocompleteDropdown.style.display === 'block';
+    }
 
     function performQuickSearch() {
         const word = quickSearchWord.value.trim();
@@ -595,39 +894,85 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// 搜尋功能
+// 搜尋功能與自動完成
 document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('searchInput');
     const searchBtn = document.getElementById('searchBtn');
     const clearSearchBtn = document.getElementById('clearSearchBtn');
     const searchStatus = document.getElementById('searchStatus');
     const wordListContainer = document.getElementById('wordListContainer');
+    const autocompleteDropdown = document.getElementById('autocompleteDropdown');
+    const autocompleteList = document.getElementById('autocompleteList');
+    const searchContainer = document.querySelector('.search-container');
 
     let searchTimeout;
+    let autocompleteTimeout;
     let isSearchMode = false;
+    let selectedIndex = -1;
+    let currentSuggestions = [];
 
     // 監聽搜尋輸入
     searchInput.addEventListener('input', function() {
         const query = this.value.trim();
+        console.log('Search input changed:', query);
 
-        // 清除之前的延遲搜尋
+        // 清除之前的延遲搜尋和自動完成
         clearTimeout(searchTimeout);
+        clearTimeout(autocompleteTimeout);
 
         if (query) {
             clearSearchBtn.style.display = 'block';
-            // 延遲搜尋，避免過於頻繁的請求
+
+            // 自動完成功能（更快觸發）
+            if (query.length >= 2) {
+                console.log('Setting autocomplete timeout for:', query);
+                autocompleteTimeout = setTimeout(() => {
+                    fetchAutocompleteSuggestions(query);
+                }, 300);
+            }
+
+            // 延遲搜尋（更長延遲，避免與自動完成衝突）
             searchTimeout = setTimeout(() => {
-                performSearch(query);
-            }, 500);
+                if (!isAutocompleteVisible()) {
+                    performSearch(query);
+                }
+            }, 1000);
         } else {
             clearSearchBtn.style.display = 'none';
+            hideAutocomplete();
             clearSearch();
         }
     });
 
-    // 監聽 Enter 鍵
-    searchInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
+    // 監聽鍵盤事件（包括方向鍵導航）
+    searchInput.addEventListener('keydown', function(e) {
+        if (isAutocompleteVisible()) {
+            switch(e.key) {
+                case 'ArrowDown':
+                    e.preventDefault();
+                    selectedIndex = Math.min(selectedIndex + 1, currentSuggestions.length - 1);
+                    updateAutocompleteSelection();
+                    break;
+                case 'ArrowUp':
+                    e.preventDefault();
+                    selectedIndex = Math.max(selectedIndex - 1, -1);
+                    updateAutocompleteSelection();
+                    break;
+                case 'Enter':
+                    e.preventDefault();
+                    if (selectedIndex >= 0) {
+                        selectSuggestion(currentSuggestions[selectedIndex]);
+                    } else {
+                        hideAutocomplete();
+                        performSearch(this.value.trim());
+                    }
+                    break;
+                case 'Escape':
+                    e.preventDefault();
+                    hideAutocomplete();
+                    break;
+            }
+        } else if (e.key === 'Enter') {
             clearTimeout(searchTimeout);
             const query = this.value.trim();
             if (query) {
@@ -636,18 +981,125 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // 點擊其他地方隱藏自動完成
+    document.addEventListener('click', function(e) {
+        if (!searchContainer.contains(e.target)) {
+            hideAutocomplete();
+        }
+    });
+
+    // 搜尋框獲得焦點時顯示自動完成（如果有內容）
+    searchInput.addEventListener('focus', function() {
+        const query = this.value.trim();
+        if (query.length >= 2 && currentSuggestions.length > 0) {
+            showAutocomplete();
+        }
+    });
+
     // 搜尋按鈕點擊
     searchBtn.addEventListener('click', function() {
         const query = searchInput.value.trim();
         if (query) {
+            hideAutocomplete();
             performSearch(query);
         }
     });
 
     // 清除搜尋按鈕點擊
     clearSearchBtn.addEventListener('click', function() {
+        hideAutocomplete();
         clearSearch();
     });
+
+    // 自動完成相關函數
+    function fetchAutocompleteSuggestions(query) {
+        console.log('Fetching autocomplete for:', query);
+        fetch(`/api/autocomplete?q=${encodeURIComponent(query)}&limit=8`)
+            .then(response => response.json())
+            .then(data => {
+                console.log('Autocomplete response:', data);
+                currentSuggestions = data.suggestions || [];
+                displayAutocompleteSuggestions(currentSuggestions);
+            })
+            .catch(error => {
+                console.error('自動完成錯誤:', error);
+                hideAutocomplete();
+            });
+    }
+
+    function displayAutocompleteSuggestions(suggestions) {
+        console.log('Displaying suggestions:', suggestions);
+        if (suggestions.length === 0) {
+            console.log('No suggestions to display');
+            hideAutocomplete();
+            return;
+        }
+
+        selectedIndex = -1;
+        let html = '';
+        console.log('Building HTML for', suggestions.length, 'suggestions');
+
+        suggestions.forEach((suggestion, index) => {
+            html += `
+                <div class="autocomplete-item" data-index="${index}" data-word-id="${suggestion.id}">
+                    <div class="d-flex align-items-center flex-grow-1">
+                        <div>
+                            <div class="word-text">${suggestion.word}</div>
+                            <div class="chinese-text">${suggestion.chinese_meaning}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        autocompleteList.innerHTML = html;
+        showAutocomplete();
+
+        // 移除舊的事件監聽器並添加新的點擊事件
+        autocompleteList.removeEventListener('click', handleAutocompleteClick);
+        autocompleteList.addEventListener('click', handleAutocompleteClick);
+    }
+
+    function handleAutocompleteClick(e) {
+        e.preventDefault();
+        const item = e.target.closest('.autocomplete-item');
+        if (item) {
+            const index = parseInt(item.dataset.index);
+            selectSuggestion(currentSuggestions[index]);
+        }
+    }
+
+    function selectSuggestion(suggestion) {
+        searchInput.value = suggestion.word;
+        hideAutocomplete();
+        performSearch(suggestion.word);
+    }
+
+    function updateAutocompleteSelection() {
+        const items = autocompleteList.querySelectorAll('.autocomplete-item');
+        items.forEach((item, index) => {
+            item.classList.toggle('active', index === selectedIndex);
+        });
+    }
+
+    function showAutocomplete() {
+        console.log('Showing autocomplete dropdown');
+        autocompleteDropdown.style.display = 'block';
+        searchContainer.classList.add('has-suggestions');
+        console.log('Dropdown display style:', autocompleteDropdown.style.display);
+        console.log('Dropdown element:', autocompleteDropdown);
+    }
+
+    function hideAutocomplete() {
+        autocompleteDropdown.style.display = 'none';
+        searchContainer.classList.remove('has-suggestions');
+        selectedIndex = -1;
+    }
+
+    function isAutocompleteVisible() {
+        return autocompleteDropdown.style.display === 'block';
+    }
+
 
     function performSearch(query) {
         // 顯示載入狀態

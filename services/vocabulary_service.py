@@ -313,6 +313,88 @@ class VocabularyService:
 
         return matching_words
 
+    def get_autocomplete_suggestions(self, query: str, limit: int = 10) -> List[Dict[str, str]]:
+        """
+        取得自動完成候選建議。
+
+        Args:
+            query: 搜尋查詢字串
+            limit: 最大回傳數量，預設10
+
+        Returns:
+            包含候選單字資訊的字典列表
+        """
+        if not query.strip() or len(query) < 2:
+            return []
+
+        vocab_data = self._load_data()
+        query_lower = query.lower()
+
+        suggestions = []
+
+        # 優先順序：完全匹配英文單字 > 開頭匹配英文單字 > 包含匹配英文單字 > 中文翻譯匹配
+        exact_matches = []
+        starts_with_matches = []
+        contains_matches = []
+        chinese_matches = []
+
+        for word in vocab_data.vocabulary:
+            word_lower = word.word.lower()
+            chinese_lower = word.chinese_meaning.lower()
+
+            # 完全匹配（不太可能，但為了完整性）
+            if word_lower == query_lower:
+                exact_matches.append(word)
+            # 開頭匹配
+            elif word_lower.startswith(query_lower):
+                starts_with_matches.append(word)
+            # 包含匹配
+            elif query_lower in word_lower:
+                contains_matches.append(word)
+            # 中文翻譯匹配
+            elif query_lower in chinese_lower:
+                chinese_matches.append(word)
+
+        # 按優先順序合併結果
+        all_matches = exact_matches + starts_with_matches + contains_matches + chinese_matches
+
+        # 限制數量並轉換為回傳格式
+        for word in all_matches[:limit]:
+            suggestions.append({
+                'id': word.id,
+                'word': word.word,
+                'chinese_meaning': word.chinese_meaning,
+                'display_text': f"{word.word} - {word.chinese_meaning}",
+                'match_type': self._get_match_type(word, query_lower)
+            })
+
+        return suggestions
+
+    def _get_match_type(self, word: Word, query_lower: str) -> str:
+        """
+        判斷匹配類型，用於前端顯示優化。
+
+        Args:
+            word: 單字物件
+            query_lower: 小寫查詢字串
+
+        Returns:
+            匹配類型字串
+        """
+        word_lower = word.word.lower()
+        chinese_lower = word.chinese_meaning.lower()
+
+        if word_lower == query_lower:
+            return 'exact'
+        elif word_lower.startswith(query_lower):
+            return 'starts_with'
+        elif query_lower in word_lower:
+            return 'contains'
+        elif query_lower in chinese_lower:
+            return 'chinese'
+        else:
+            return 'other'
+
     def get_words_by_time_filter(self, time_filter: str) -> List[Word]:
         """
         Get words filtered by time range.
