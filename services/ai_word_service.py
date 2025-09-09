@@ -152,6 +152,11 @@ class AIWordService:
                             # Parse JSON response
                             word_data = json.loads(content)
 
+                            # Calculate confidence score based on content quality
+                            confidence_score = self._calculate_confidence_score(
+                                word_data, word, "openai"
+                            )
+
                             return WordInfo(
                                 word=word,
                                 chinese_meaning=word_data.get("chinese_meaning", ""),
@@ -160,7 +165,7 @@ class AIWordService:
                                 example_sentence=word_data.get("example_sentence", ""),
                                 synonyms=word_data.get("synonyms", []),
                                 antonyms=word_data.get("antonyms", []),
-                                confidence_score=0.9,  # OpenAI generally high quality
+                                confidence_score=confidence_score,
                                 provider="openai"
                             )
 
@@ -262,6 +267,11 @@ class AIWordService:
                                 # Parse JSON response
                                 word_data = json.loads(content)
 
+                                # Calculate confidence score based on content quality
+                                confidence_score = self._calculate_confidence_score(
+                                    word_data, word, "gemini"
+                                )
+
                                 return WordInfo(
                                     word=word,
                                     chinese_meaning=word_data.get("chinese_meaning", ""),
@@ -270,7 +280,7 @@ class AIWordService:
                                     example_sentence=word_data.get("example_sentence", ""),
                                     synonyms=word_data.get("synonyms", []),
                                     antonyms=word_data.get("antonyms", []),
-                                    confidence_score=0.85,  # Gemini good quality
+                                    confidence_score=confidence_score,
                                     provider="gemini"
                                 )
                             else:
@@ -314,6 +324,130 @@ class AIWordService:
                 raise Exception(f"網路連線錯誤: {str(e)}")
 
         raise Exception("Gemini API 呼叫失敗，已達最大重試次數")
+
+    def _calculate_confidence_score(self, word_data: Dict, original_word: str, provider: str) -> float:
+        """
+        Calculate confidence score based on AI response quality.
+
+        Args:
+            word_data: AI generated word data
+            original_word: Original input word
+            provider: AI provider used
+
+        Returns:
+            Confidence score between 0.0 and 1.0
+        """
+        score = 0.0
+
+        # Base score by provider (40% of total)
+        provider_scores = {
+            "openai": 0.40,    # OpenAI base reliability
+            "gemini": 0.35,    # Gemini base reliability
+        }
+        score += provider_scores.get(provider, 0.30)
+
+        # Content completeness score (35% of total)
+        completeness_score = 0.0
+        max_completeness = 0.35
+
+        # Chinese meaning (required - 25% of completeness)
+        chinese_meaning = word_data.get("chinese_meaning", "").strip()
+        if chinese_meaning:
+            if len(chinese_meaning) >= 2 and len(chinese_meaning) <= 20 and not any(char in chinese_meaning for char in ['？', '?', '未知', '不確定']):
+                completeness_score += 0.25 * max_completeness
+            elif chinese_meaning:
+                completeness_score += 0.15 * max_completeness
+
+        # English meaning (20% of completeness)
+        english_meaning = word_data.get("english_meaning", "").strip()
+        if english_meaning:
+            if len(english_meaning) >= 10 and len(english_meaning) <= 100 and not english_meaning.lower().startswith('i don'):
+                completeness_score += 0.20 * max_completeness
+            elif english_meaning:
+                completeness_score += 0.10 * max_completeness
+
+        # Phonetic (15% of completeness)
+        phonetic = word_data.get("phonetic", "").strip()
+        if phonetic:
+            if phonetic.startswith('/') and phonetic.endswith('/') and len(phonetic) > 3:
+                completeness_score += 0.15 * max_completeness
+            elif phonetic.startswith('[') and phonetic.endswith(']'):
+                completeness_score += 0.10 * max_completeness
+            elif len(phonetic) > 2:
+                completeness_score += 0.05 * max_completeness
+
+        # Example sentence (20% of completeness)
+        example = word_data.get("example_sentence", "").strip()
+        if example:
+            words_in_example = len(example.split())
+            if original_word.lower() in example.lower() and words_in_example >= 4 and words_in_example <= 20:
+                completeness_score += 0.20 * max_completeness
+            elif len(example) >= 10:
+                completeness_score += 0.10 * max_completeness
+
+        # Synonyms (10% of completeness)
+        synonyms = word_data.get("synonyms", [])
+        if isinstance(synonyms, list) and synonyms:
+            if len(synonyms) >= 2:
+                completeness_score += 0.10 * max_completeness
+            else:
+                completeness_score += 0.05 * max_completeness
+
+        # Antonyms (10% of completeness)
+        antonyms = word_data.get("antonyms", [])
+        if isinstance(antonyms, list) and antonyms:
+            if len(antonyms) >= 1:
+                completeness_score += 0.10 * max_completeness
+            else:
+                completeness_score += 0.05 * max_completeness
+
+        score += completeness_score
+
+        # Content quality score (25% of total)
+        quality_score = 0.0
+        max_quality = 0.25
+
+        # Check for error indicators
+        error_indicators = ['？', '?', '未知', '不確定', 'unknown', 'not sure', 'unclear']
+        has_errors = False
+
+        for field in [chinese_meaning, english_meaning, example]:
+            if any(indicator in field.lower() for indicator in error_indicators):
+                has_errors = True
+                break
+
+        if not has_errors:
+            quality_score += 0.40 * max_quality
+
+        # Check phonetic quality
+        if phonetic:
+            ipa_chars = set('ɪɛæɑɔʊʌəɜɝɚɨɯɤɘɵɞɶœɐɞaeiouɪʏʊɤɯɨəɘɵɞɶœɐɞbpfvθðszʃʒʧʤmnŋlrjwɹɻʔhɦɡkɢqχʁħʕʜʢʡɕʑɺɾɭɳɖɟcɲʎʟɬɮʘǀǃǂǁɓɗʄɠʛ')
+            if any(char in ipa_chars for char in phonetic):
+                quality_score += 0.30 * max_quality
+            elif phonetic.startswith('/') and phonetic.endswith('/'):
+                quality_score += 0.20 * max_quality
+
+        # Check example sentence quality
+        if example and original_word.lower() in example.lower():
+            words_count = len(example.split())
+            if 5 <= words_count <= 15:
+                quality_score += 0.30 * max_quality
+            elif 3 <= words_count <= 20:
+                quality_score += 0.20 * max_quality
+
+        score += quality_score
+
+        # Apply penalties for poor quality
+        if not chinese_meaning:
+            score *= 0.5  # Major penalty for missing Chinese meaning
+
+        if has_errors:
+            score *= 0.7  # Penalty for error indicators
+
+        # Ensure score is within valid range
+        final_score = max(0.1, min(1.0, score))
+
+        return round(final_score, 3)
 
     def generate_word_info_sync(self, word: str, provider: str = None) -> WordInfo:
         """
