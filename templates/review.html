@@ -360,8 +360,15 @@
             <div class="word-text">${word.word}</div>
         </td>
         <td class="word-cell phonetic-column">
-            <div class="phonetic-text phonetic-content" onclick="toggleReveal(this)">
-                ${word.phonetic || ''}
+            <div class="d-flex align-items-center">
+                <button class="btn btn-outline-primary btn-sm review-pronunciation-btn me-2"
+                        data-word="${word.word}"
+                        title="播放發音">
+                    <i class="bi bi-volume-up"></i>
+                </button>
+                <div class="phonetic-text phonetic-content" onclick="toggleReveal(this)">
+                    ${word.phonetic || ''}
+                </div>
             </div>
         </td>
         <td class="word-cell meaning-column">
@@ -370,7 +377,7 @@
             </div>
         </td>
         <td class="word-cell text-center">
-            <button class="difficulty-btn ${difficultWords.has(globalIndex) ? 'marked' : ''}" 
+            <button class="difficulty-btn ${difficultWords.has(globalIndex) ? 'marked' : ''}"
                     onclick="toggleDifficulty(${globalIndex}, this)">
                 <i class="bi bi-star${difficultWords.has(globalIndex) ? '-fill' : ''}"></i>
             </button>
@@ -663,5 +670,123 @@
             e.returnValue = '您的複習進度將會遺失，確定要離開嗎？';
         }
     });
+
+    // 複習頁面發音功能
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.review-pronunciation-btn')) {
+            const btn = e.target.closest('.review-pronunciation-btn');
+            const word = btn.getAttribute('data-word');
+            if (word) {
+                playReviewPronunciation(btn, word);
+            }
+        }
+    });
+
+    function playReviewPronunciation(btn, word) {
+        const originalContent = btn.innerHTML;
+
+        // 設置載入狀態
+        btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+        btn.disabled = true;
+
+        // 構造音頻URL
+        const audioUrl = `https://s.yimg.com/bg/dict/dreye/live/m/${word.toLowerCase()}.mp3`;
+        console.log('複習頁面播放音頻:', audioUrl);
+
+        // 創建音頻元素
+        const audio = new Audio();
+
+        // 音頻載入成功
+        audio.addEventListener('canplay', function() {
+            console.log('複習音頻載入成功:', word);
+            btn.innerHTML = '<i class="bi bi-play-fill"></i>';
+            btn.title = '播放中...';
+
+            audio.play().then(() => {
+                console.log('複習音頻播放開始:', word);
+            }).catch((error) => {
+                console.error('複習播放失敗:', error);
+                handleReviewPlaybackError();
+            });
+        });
+
+        // 音頻播放結束
+        audio.addEventListener('ended', function() {
+            console.log('複習音頻播放結束:', word);
+            btn.innerHTML = originalContent;
+            btn.disabled = false;
+            btn.title = '播放發音';
+        });
+
+        // 音頻載入錯誤
+        audio.addEventListener('error', function(e) {
+            console.error('複習音頻載入錯誤:', e);
+            handleReviewPlaybackError();
+        });
+
+        // 處理播放錯誤
+        function handleReviewPlaybackError() {
+            btn.innerHTML = '<i class="bi bi-volume-mute text-muted"></i>';
+            btn.disabled = false;
+            btn.title = '無法載入發音';
+
+            // 顯示錯誤提示
+            showReviewNotification(`單字 "${word}" 暫無發音資源`, 'warning');
+
+            // 3秒後恢復原狀
+            setTimeout(() => {
+                btn.innerHTML = originalContent;
+                btn.title = '播放發音';
+            }, 3000);
+        }
+
+        // 設置音頻源並開始載入
+        audio.src = audioUrl;
+        audio.load();
+
+        // 設置超時處理
+        setTimeout(() => {
+            if (btn.disabled && btn.innerHTML.includes('hourglass')) {
+                console.log('複習載入超時:', word);
+                handleReviewPlaybackError();
+            }
+        }, 10000);
+    }
+
+    function showReviewNotification(message, type = 'info') {
+        // 先移除現有的通知
+        const existingNotifications = document.querySelectorAll('.review-pronunciation-notification');
+        existingNotifications.forEach(n => n.remove());
+
+        // 選擇圖示
+        let icon = 'bi-info-circle';
+        if (type === 'success') icon = 'bi-check-circle';
+        else if (type === 'warning') icon = 'bi-exclamation-triangle';
+        else if (type === 'danger') icon = 'bi-x-circle';
+
+        // 創建通知元素
+        const notification = document.createElement('div');
+        notification.className = `alert alert-${type} alert-dismissible fade show position-fixed review-pronunciation-notification`;
+        notification.style.cssText = 'top: 80px; right: 20px; z-index: 9999; min-width: 320px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);';
+        notification.innerHTML = `
+            <i class="bi ${icon}"></i> ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+
+        // 添加到頁面
+        document.body.appendChild(notification);
+
+        // 自動移除
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.classList.remove('show');
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.remove();
+                    }
+                }, 300);
+            }
+        }, 3000);
+    }
 </script>
 {% endblock %}

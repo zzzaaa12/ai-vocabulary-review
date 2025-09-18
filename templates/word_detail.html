@@ -33,6 +33,9 @@
                     {% if word.phonetic %}
                         <span class="badge bg-light text-dark ms-2">{{ word.phonetic }}</span>
                     {% endif %}
+                    <button id="pronunciationBtn" class="btn btn-outline-primary btn-sm ms-2" title="播放發音">
+                        <i class="bi bi-volume-up"></i>
+                    </button>
                 </h3>
             </div>
             <div class="card-body">
@@ -207,6 +210,133 @@ document.addEventListener('DOMContentLoaded', function() {
             submitBtn.disabled = true;
         });
     }
+
+    // 發音功能
+    const pronunciationBtn = document.getElementById('pronunciationBtn');
+    const wordText = '{{ word.word }}';
+
+    if (pronunciationBtn && wordText) {
+        pronunciationBtn.addEventListener('click', function() {
+            playPronunciation(wordText);
+        });
+    }
 });
+
+function playPronunciation(word) {
+    const btn = document.getElementById('pronunciationBtn');
+    const originalContent = btn.innerHTML;
+
+    // 設置載入狀態
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+    btn.disabled = true;
+
+    // 構造音頻URL（使用雅虎字典）
+    const audioUrl = `https://s.yimg.com/bg/dict/dreye/live/m/${word.toLowerCase()}.mp3`;
+    console.log('嘗試播放音頻:', audioUrl);
+
+    // 創建音頻元素
+    const audio = new Audio();
+
+    // 音頻載入開始
+    audio.addEventListener('loadstart', function() {
+        console.log('開始載入音頻...');
+    });
+
+    // 音頻載入成功，可以開始播放
+    audio.addEventListener('canplay', function() {
+        console.log('音頻載入成功，開始播放');
+        btn.innerHTML = '<i class="bi bi-play-fill"></i>';
+        btn.title = '播放中...';
+
+        // 播放音頻
+        audio.play().then(() => {
+            console.log('音頻播放開始');
+        }).catch((error) => {
+            console.error('播放失敗:', error);
+            handlePlaybackError();
+        });
+    });
+
+    // 音頻播放結束
+    audio.addEventListener('ended', function() {
+        console.log('音頻播放結束');
+        btn.innerHTML = originalContent;
+        btn.disabled = false;
+        btn.title = '播放發音';
+    });
+
+    // 音頻載入錯誤
+    audio.addEventListener('error', function(e) {
+        console.error('音頻載入錯誤:', e);
+        console.error('錯誤類型:', audio.error);
+        handlePlaybackError();
+    });
+
+    // 處理播放錯誤的函數
+    function handlePlaybackError() {
+        btn.innerHTML = '<i class="bi bi-volume-mute text-muted"></i>';
+        btn.disabled = false;
+        btn.title = '無法載入發音';
+
+        // 顯示錯誤提示
+        showNotification(`單字 "${word}" 暫無發音資源`, 'warning');
+
+        // 3秒後恢復原狀
+        setTimeout(() => {
+            btn.innerHTML = originalContent;
+            btn.title = '播放發音';
+        }, 3000);
+    }
+
+    // 設置音頻源並開始載入
+    audio.src = audioUrl;
+    audio.load();
+
+    // 設置超時處理（10秒後如果還沒載入成功就認為失敗）
+    setTimeout(() => {
+        if (btn.disabled && btn.innerHTML.includes('hourglass')) {
+            console.log('載入超時');
+            handlePlaybackError();
+        }
+    }, 10000);
+}
+
+function showNotification(message, type = 'info') {
+    // 先移除現有的通知
+    const existingNotifications = document.querySelectorAll('.pronunciation-notification');
+    existingNotifications.forEach(n => n.remove());
+
+    // 選擇圖示
+    let icon = 'bi-info-circle';
+    if (type === 'success') icon = 'bi-check-circle';
+    else if (type === 'warning') icon = 'bi-exclamation-triangle';
+    else if (type === 'danger') icon = 'bi-x-circle';
+
+    // 創建通知元素
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type} alert-dismissible fade show position-fixed pronunciation-notification`;
+    notification.style.cssText = 'top: 80px; right: 20px; z-index: 9999; min-width: 320px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);';
+    notification.innerHTML = `
+        <i class="bi ${icon}"></i> ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+
+    // 添加到頁面
+    document.body.appendChild(notification);
+
+    // 根據類型設置不同的自動移除時間
+    const autoRemoveTime = type === 'info' ? 2000 : 3000;
+
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.classList.remove('show');
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 300);
+        }
+    }, autoRemoveTime);
+}
 </script>
 {% endblock %}

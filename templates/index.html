@@ -384,10 +384,15 @@
                                 <div class="d-flex w-100 justify-content-between align-items-start">
                                     <div class="flex-grow-1">
                                         <div class="d-flex align-items-center mb-2">
-                                            <h5 class="mb-0 me-3">{{ word.word }}</h5>
+                                            <h5 class="mb-0 me-3"><strong>{{ word.word }}</strong></h5>
                                             {% if word.phonetic %}
-                                                <span class="badge bg-light text-dark">{{ word.phonetic }}</span>
+                                                <span class="badge bg-light text-dark me-2">{{ word.phonetic }}</span>
                                             {% endif %}
+                                            <button class="btn btn-outline-primary btn-sm pronunciation-btn"
+                                                    data-word="{{ word.word }}"
+                                                    title="播放發音">
+                                                <i class="bi bi-volume-up"></i>
+                                            </button>
                                         </div>
                                         <p class="mb-1 text-primary">{{ word.chinese_meaning }}</p>
                                         {% if word.english_meaning %}
@@ -1150,7 +1155,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="d-flex w-100 justify-content-between align-items-start">
                         <div class="flex-grow-1">
                             <div class="d-flex align-items-center mb-2">
-                                <h5 class="mb-0 me-3">${word.word}</h5>
+                                <h5 class="mb-0 me-3"><strong>${word.word}</strong></h5>
                                 ${word.phonetic ? `<span class="badge bg-light text-dark">${word.phonetic}</span>` : ''}
                             </div>
                             <p class="mb-1 text-primary">${word.chinese_meaning}</p>
@@ -1364,6 +1369,127 @@ function saveQuickAiResult() {
         saveBtn.innerHTML = '<i class="bi bi-check-circle"></i> 新增並儲存';
         saveBtn.disabled = false;
     });
+}
+
+// 列表頁面發音功能
+document.addEventListener('DOMContentLoaded', function() {
+    // 為所有發音按鈕添加事件監聽器
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.pronunciation-btn')) {
+            const btn = e.target.closest('.pronunciation-btn');
+            const word = btn.getAttribute('data-word');
+            if (word) {
+                playListPronunciation(btn, word);
+            }
+        }
+    });
+});
+
+function playListPronunciation(btn, word) {
+    const originalContent = btn.innerHTML;
+
+    // 設置載入狀態
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+    btn.disabled = true;
+
+    // 構造音頻URL
+    const audioUrl = `https://s.yimg.com/bg/dict/dreye/live/m/${word.toLowerCase()}.mp3`;
+    console.log('列表頁面播放音頻:', audioUrl);
+
+    // 創建音頻元素
+    const audio = new Audio();
+
+    // 音頻載入成功
+    audio.addEventListener('canplay', function() {
+        console.log('列表音頻載入成功:', word);
+        btn.innerHTML = '<i class="bi bi-play-fill"></i>';
+        btn.title = '播放中...';
+
+        audio.play().then(() => {
+            console.log('列表音頻播放開始:', word);
+        }).catch((error) => {
+            console.error('列表播放失敗:', error);
+            handleListPlaybackError();
+        });
+    });
+
+    // 音頻播放結束
+    audio.addEventListener('ended', function() {
+        console.log('列表音頻播放結束:', word);
+        btn.innerHTML = originalContent;
+        btn.disabled = false;
+        btn.title = '播放發音';
+    });
+
+    // 音頻載入錯誤
+    audio.addEventListener('error', function(e) {
+        console.error('列表音頻載入錯誤:', e);
+        handleListPlaybackError();
+    });
+
+    // 處理播放錯誤
+    function handleListPlaybackError() {
+        btn.innerHTML = '<i class="bi bi-volume-mute text-muted"></i>';
+        btn.disabled = false;
+        btn.title = '無法載入發音';
+
+        // 顯示錯誤提示
+        showListNotification(`單字 "${word}" 暫無發音資源`, 'warning');
+
+        // 3秒後恢復原狀
+        setTimeout(() => {
+            btn.innerHTML = originalContent;
+            btn.title = '播放發音';
+        }, 3000);
+    }
+
+    // 設置音頻源並開始載入
+    audio.src = audioUrl;
+    audio.load();
+
+    // 設置超時處理
+    setTimeout(() => {
+        if (btn.disabled && btn.innerHTML.includes('hourglass')) {
+            console.log('列表載入超時:', word);
+            handleListPlaybackError();
+        }
+    }, 10000);
+}
+
+function showListNotification(message, type = 'info') {
+    // 先移除現有的通知
+    const existingNotifications = document.querySelectorAll('.list-pronunciation-notification');
+    existingNotifications.forEach(n => n.remove());
+
+    // 選擇圖示
+    let icon = 'bi-info-circle';
+    if (type === 'success') icon = 'bi-check-circle';
+    else if (type === 'warning') icon = 'bi-exclamation-triangle';
+    else if (type === 'danger') icon = 'bi-x-circle';
+
+    // 創建通知元素
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type} alert-dismissible fade show position-fixed list-pronunciation-notification`;
+    notification.style.cssText = 'top: 80px; right: 20px; z-index: 9999; min-width: 320px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);';
+    notification.innerHTML = `
+        <i class="bi ${icon}"></i> ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+
+    // 添加到頁面
+    document.body.appendChild(notification);
+
+    // 自動移除
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.classList.remove('show');
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 300);
+        }
+    }, 3000);
 }
 </script>
 {% endblock %}
