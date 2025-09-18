@@ -38,14 +38,14 @@
                 </div>
                 <div class="card-body">
                     <div class="form-floating mb-3">
-                        <textarea class="form-control" id="words_text" name="words_text" 
-                                placeholder="請輸入英文單字，每行一個" 
+                        <textarea class="form-control" id="words_text" name="words_text"
+                                placeholder="請輸入英文單字，每行一個"
                                 style="height: 300px" required></textarea>
                         <label for="words_text">
                             <i class="bi bi-list-ul"></i> 英文單字列表 *
                         </label>
                     </div>
-                    
+
                     <div class="alert alert-info">
                         <h6><i class="bi bi-info-circle"></i> AI 智能生成說明：</h6>
                         <p class="mb-2">只需要輸入英文單字，AI 會自動生成：</p>
@@ -141,7 +141,7 @@
                         <span id="progressText">0 / {{ words|length }}</span>
                     </div>
                     <div class="progress mb-2">
-                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                        <div class="progress-bar progress-bar-striped progress-bar-animated"
                              role="progressbar" style="width: 0%" id="progressBar"></div>
                     </div>
                     <div id="currentWord" class="text-center text-primary">
@@ -154,11 +154,11 @@
                     <div id="resultsContainer">
                         <!-- AI 生成結果會在這裡顯示 -->
                     </div>
-                    
+
                     <form method="POST" id="saveForm" class="mt-4">
                         <input type="hidden" name="action" value="save">
                         <input type="hidden" name="ai_results" id="aiResultsData">
-                        
+
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-success" id="saveAllBtn">
                                 <i class="bi bi-check-circle"></i> 儲存選中的單字
@@ -193,10 +193,13 @@ async function startAIGeneration(words) {
     const currentWord = document.getElementById('currentWord');
     const generationResults = document.getElementById('generationResults');
     const resultsContainer = document.getElementById('resultsContainer');
-    
+
     try {
         currentWord.textContent = '正在連接 AI 服務...';
-        
+        progressText.textContent = `處理中... (${words.length} 個單字)`;
+        progressBar.style.width = '100%';
+        progressBar.classList.add('progress-bar-striped', 'progress-bar-animated');
+
         const response = await fetch('/api/batch-ai-generate', {
             method: 'POST',
             headers: {
@@ -207,23 +210,30 @@ async function startAIGeneration(words) {
                 provider: null
             })
         });
-        
+
         const data = await response.json();
-        
+
         if (!data.success) {
             throw new Error(data.message);
         }
-        
-        // 顯示結果
-        displayResults(data.results, data.statistics);
-        
-        // 隱藏進度，顯示結果
-        document.getElementById('generationProgress').style.display = 'none';
-        generationResults.style.display = 'block';
-        
+
+        // 顯示完成狀態
+        currentWord.innerHTML = '<span class="text-success"><i class="bi bi-check-circle"></i> AI 生成完成！</span>';
+        progressBar.classList.remove('progress-bar-animated');
+        progressBar.classList.add('bg-success');
+
+        // 短暫延遲後顯示結果
+        setTimeout(() => {
+            displayResults(data.results, data.statistics);
+
+            // 隱藏進度，顯示結果
+            document.getElementById('generationProgress').style.display = 'none';
+            generationResults.style.display = 'block';
+        }, 500);
+
     } catch (error) {
         console.error('AI 生成錯誤:', error);
-        currentWord.innerHTML = `<span class="text-danger">生成失敗：${error.message}</span>`;
+        currentWord.innerHTML = `<span class="text-danger"><i class="bi bi-x-circle"></i> 生成失敗：${error.message}</span>`;
         progressBar.style.width = '100%';
         progressBar.classList.remove('progress-bar-animated');
         progressBar.classList.add('bg-danger');
@@ -232,7 +242,7 @@ async function startAIGeneration(words) {
 
 function displayResults(results, statistics) {
     const container = document.getElementById('resultsContainer');
-    
+
     // 統計資訊
     let html = `
         <div class="alert alert-info mb-4">
@@ -257,7 +267,7 @@ function displayResults(results, statistics) {
             </div>
         </div>
     `;
-    
+
     // 結果表格
     html += `
         <div class="table-responsive">
@@ -276,12 +286,12 @@ function displayResults(results, statistics) {
                 </thead>
                 <tbody>
     `;
-    
+
     results.forEach((result, index) => {
         if (result.success) {
-            const confidenceClass = result.confidence_score >= 0.8 ? 'success' : 
+            const confidenceClass = result.confidence_score >= 0.8 ? 'success' :
                                    result.confidence_score >= 0.6 ? 'warning' : 'danger';
-            
+
             html += `
                 <tr class="result-row" data-index="${index}">
                     <td>
@@ -306,7 +316,7 @@ function displayResults(results, statistics) {
                         </span>
                     </td>
                     <td>
-                        <button type="button" class="btn btn-sm btn-outline-primary" 
+                        <button type="button" class="btn btn-sm btn-outline-primary"
                                 onclick="editResult(${index})">
                             <i class="bi bi-pencil"></i> 編輯
                         </button>
@@ -331,7 +341,7 @@ function displayResults(results, statistics) {
                         </span>
                     </td>
                     <td>
-                        <button type="button" class="btn btn-sm btn-outline-warning" 
+                        <button type="button" class="btn btn-sm btn-outline-warning"
                                 onclick="retryWord('${result.word}', ${index})">
                             <i class="bi bi-arrow-clockwise"></i> 重試
                         </button>
@@ -340,18 +350,18 @@ function displayResults(results, statistics) {
             `;
         }
     });
-    
+
     html += `
                 </tbody>
             </table>
         </div>
     `;
-    
+
     container.innerHTML = html;
-    
+
     // 儲存結果到隱藏欄位
     document.getElementById('aiResultsData').value = JSON.stringify(results);
-    
+
     // 設置事件監聽器
     setupResultsEventListeners();
 }
@@ -364,14 +374,14 @@ function setupResultsEventListeners() {
         });
         updateSelectedCount();
     });
-    
+
     document.getElementById('deselectAllBtn').addEventListener('click', function() {
         document.querySelectorAll('.word-checkbox').forEach(checkbox => {
             checkbox.checked = false;
         });
         updateSelectedCount();
     });
-    
+
     // 主選擇框
     document.getElementById('selectAllCheckbox').addEventListener('change', function() {
         document.querySelectorAll('.word-checkbox:not(:disabled)').forEach(checkbox => {
@@ -379,19 +389,19 @@ function setupResultsEventListeners() {
         });
         updateSelectedCount();
     });
-    
+
     // 個別選擇框
     document.querySelectorAll('.word-checkbox').forEach(checkbox => {
         checkbox.addEventListener('change', updateSelectedCount);
     });
-    
+
     updateSelectedCount();
 }
 
 function updateSelectedCount() {
     const selectedCount = document.querySelectorAll('.word-checkbox:checked').length;
     const saveBtn = document.getElementById('saveAllBtn');
-    
+
     if (selectedCount > 0) {
         saveBtn.innerHTML = `<i class="bi bi-check-circle"></i> 儲存選中的單字 (${selectedCount})`;
         saveBtn.disabled = false;
@@ -399,14 +409,14 @@ function updateSelectedCount() {
         saveBtn.innerHTML = `<i class="bi bi-check-circle"></i> 請選擇要儲存的單字`;
         saveBtn.disabled = true;
     }
-    
+
     // 更新結果資料
     updateResultsData();
 }
 
 function updateResultsData() {
     const currentData = JSON.parse(document.getElementById('aiResultsData').value);
-    
+
     // 更新選中狀態
     document.querySelectorAll('.word-checkbox').forEach(checkbox => {
         const index = parseInt(checkbox.dataset.index);
@@ -414,7 +424,7 @@ function updateResultsData() {
             currentData[index].selected = checkbox.checked;
         }
     });
-    
+
     document.getElementById('aiResultsData').value = JSON.stringify(currentData);
 }
 
@@ -435,7 +445,7 @@ function retryWord(word, index) {
 document.addEventListener('DOMContentLoaded', function() {
     // 檢查 AI 狀態
     checkAiStatus();
-    
+
     // 載入範例
     document.getElementById('loadExampleBtn').addEventListener('click', function() {
         const exampleWords = `apple
@@ -448,14 +458,14 @@ friendship
 creativity
 determination
 happiness`;
-        
+
         document.getElementById('words_text').value = exampleWords;
         updateWordCount();
     });
-    
+
     // 監聽文本變化
     document.getElementById('words_text').addEventListener('input', updateWordCount);
-    
+
     // 表單提交處理
     document.getElementById('aiInputForm').addEventListener('submit', function(e) {
         const submitBtn = document.getElementById('generateBtn');
@@ -467,9 +477,9 @@ happiness`;
 function updateWordCount() {
     const wordsText = document.getElementById('words_text').value.trim();
     const words = wordsText ? wordsText.split('\n').filter(line => line.trim()).length : 0;
-    
+
     document.getElementById('countNumber').textContent = words;
-    
+
     const generateBtn = document.getElementById('generateBtn');
     if (words > 0 && words <= 50) {
         generateBtn.disabled = false;
@@ -485,7 +495,7 @@ function updateWordCount() {
 
 function checkAiStatus() {
     const statusDiv = document.getElementById('aiStatus');
-    
+
     fetch('/api/ai-status')
         .then(response => response.json())
         .then(data => {
