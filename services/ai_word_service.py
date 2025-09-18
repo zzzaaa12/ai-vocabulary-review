@@ -105,7 +105,7 @@ class AIWordService:
     "chinese_meaning": "中文翻譯（簡潔明確）",
     "english_meaning": "英文定義（用英文解釋）",
     "phonetic": "音標（IPA格式，包含斜線）",
-    "example_sentence": "例句（展示單字用法）",
+    "example_sentence": "例句（展示單字用法，優先使用科技類例句）",
     "synonyms": ["同義詞1", "同義詞2", "同義詞3"],
     "antonyms": ["反義詞1", "反義詞2"]
 }}
@@ -117,7 +117,16 @@ class AIWordService:
 4. 例句要自然實用
 5. 同義詞和反義詞各提供2-3個
 6. 如果是多義詞，提供最常用的意思
-7. 只回應JSON，不要其他文字"""
+7. 只回應JSON，不要其他文字
+
+重要：單字形式要求
+- 如果輸入的是複數名詞（如words, books），請轉換為單數形式（word, book）
+- 如果輸入的是動詞變化形式（如running, walked, goes），請轉換為原型動詞（run, walk, go）
+- 形容詞保持原形式，但請在中文翻譯中標明級別：
+  * 原級形容詞：good → "好的"
+  * 比較級形容詞：better → "更好的（比較級）"
+  * 最高級形容詞：best → "最好的（最高級）"
+- 所有資訊（音標、定義、例句）都應該對應實際輸入的單字形式"""
 
         payload = {
             "model": model,
@@ -218,7 +227,7 @@ class AIWordService:
     "chinese_meaning": "中文翻譯（簡潔明確）",
     "english_meaning": "英文定義（用英文解釋）",
     "phonetic": "音標（IPA格式，包含斜線）",
-    "example_sentence": "例句（展示單字用法）",
+    "example_sentence": "例句（展示單字用法，優先使用科技類例句）",
     "synonyms": ["同義詞1", "同義詞2", "同義詞3"],
     "antonyms": ["反義詞1", "反義詞2"]
 }}
@@ -230,7 +239,16 @@ class AIWordService:
 4. 例句要自然實用
 5. 同義詞和反義詞各提供2-3個
 6. 如果是多義詞，提供最常用的意思
-7. 只回應JSON，不要其他文字"""
+7. 只回應JSON，不要其他文字
+
+重要：單字形式要求
+- 如果輸入的是複數名詞（如words, books），請轉換為單數形式（word, book）
+- 如果輸入的是動詞變化形式（如running, walked, goes），請轉換為原型動詞（run, walk, go）
+- 形容詞保持原形式，但請在中文翻譯中標明級別：
+  * 原級形容詞：good → "好的"
+  * 比較級形容詞：better → "更好的（比較級）"
+  * 最高級形容詞：best → "最好的（最高級）"
+- 所有資訊（音標、定義、例句）都應該對應實際輸入的單字形式"""
 
         payload = {
             "contents": [
