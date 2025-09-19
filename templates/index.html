@@ -377,6 +377,19 @@
                 <!-- 單字列表容器 -->
                 <div id="wordListContainer">
                     {% if words %}
+                        <!-- 單字列表標題 -->
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <h5 class="mb-0">
+                                <i class="bi bi-card-list"></i>
+                                最新單字
+                                <small class="text-muted">(顯示最近5個)</small>
+                            </h5>
+                            {% if filtered_count > 5 %}
+                            <small class="text-muted">
+                                共 {{ filtered_count }} 個單字，顯示最新 {{ words|length }} 個
+                            </small>
+                            {% endif %}
+                        </div>
                         <!-- 單字列表 -->
                         <div class="list-group" id="wordList">
                         {% for word in words %}

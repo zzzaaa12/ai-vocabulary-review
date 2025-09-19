@@ -76,6 +76,11 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('vocabulary_list') }}">
+                            <i class="bi bi-book"></i> 單字本
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('add_word') }}">
                             <i class="bi bi-plus-circle"></i> 新增單字
                         </a>
@@ -109,6 +114,10 @@
                             <li><a class="dropdown-item theme-option d-flex align-items-center" href="#" data-theme="gray">
                                 <div class="theme-color-preview gray me-2"></div>
                                 <span>灰色主題</span>
+                            </a></li>
+                            <li><a class="dropdown-item theme-option d-flex align-items-center" href="#" data-theme="warm-brown">
+                                <div class="theme-color-preview warm-brown me-2"></div>
+                                <span>暖灰棕主題</span>
                             </a></li>
                         </ul>
                     </li>
@@ -190,7 +199,8 @@
                 'orange': '橘色主題',
                 'blue': '藍色主題',
                 'green': '綠色主題',
-                'gray': '灰色主題'
+                'gray': '灰色主題',
+                'warm-brown': '暖灰棕主題'
             };
 
             // 載入儲存的主題，預設為橘色

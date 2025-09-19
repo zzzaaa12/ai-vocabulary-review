@@ -1,0 +1,809 @@
+{% extends "base.html" %}
+
+{% block title %}首頁 - English Vocabulary Notebook{% endblock %}
+
+{% block extra_css %}
+<style>
+.quick-search-container {
+    border: 2px dashed var(--theme-border);
+    border-radius: 12px;
+    padding: 20px;
+    background: var(--theme-gradient-light);
+    transition: all 0.3s ease;
+}
+
+.quick-search-container .input-group-lg .form-control {
+    border-radius: 8px 0 0 8px;
+    border: 2px solid var(--theme-border);
+    transition: border-color 0.3s ease;
+}
+
+.quick-search-container .btn-primary {
+    border-radius: 0;
+}
+
+.quick-search-container .btn-outline-primary {
+    border-radius: 0 8px 8px 0;
+}
+
+.quick-search-container .input-group .btn:not(:last-child) {
+    border-right: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.quick-search-container h3 {
+    font-weight: 600;
+}
+
+.quick-search-container .text-muted {
+    font-size: 0.95rem;
+}
+
+/* 快速查詢自動完成樣式 */
+.quick-autocomplete-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 9999;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 0 0 8px 8px;
+    border-top: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.quick-autocomplete-list {
+    padding: 0;
+    margin: 0;
+}
+
+.quick-autocomplete-item {
+    padding: 12px 20px;
+    cursor: pointer;
+    border-bottom: 1px solid #f8f9fa;
+    transition: background-color 0.2s ease;
+    display: flex;
+    align-items: center;
+}
+
+.quick-autocomplete-item:hover,
+.quick-autocomplete-item.active {
+    background-color: rgba(var(--theme-primary-rgb, 13, 110, 253), 0.1);
+    color: var(--theme-primary);
+}
+
+.quick-autocomplete-item:last-child {
+    border-bottom: none;
+}
+
+.quick-autocomplete-item .word-text {
+    font-weight: 500;
+    color: #333;
+    font-size: 1.1em;
+}
+
+.quick-autocomplete-item:hover .word-text,
+.quick-autocomplete-item.active .word-text {
+    color: var(--theme-primary);
+}
+
+.quick-input-container.has-suggestions .input-group input {
+    border-bottom-left-radius: 0;
+}
+
+.quick-input-container.has-suggestions .input-group button {
+    border-bottom-right-radius: 0;
+}
+
+.stat-card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    height: 100%;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+.stat-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: white;
+    margin-bottom: 15px;
+}
+
+.stat-icon.primary { background: linear-gradient(135deg, #007bff, #0056b3); }
+.stat-icon.success { background: linear-gradient(135deg, #28a745, #1e7e34); }
+.stat-icon.info { background: linear-gradient(135deg, #17a2b8, #117a8b); }
+.stat-icon.warning { background: linear-gradient(135deg, #ffc107, #e0a800); }
+
+.action-card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease;
+    height: 100%;
+}
+
+.action-card:hover {
+    transform: translateY(-2px);
+}
+
+.quick-action-btn {
+    width: 100%;
+    height: 60px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.recent-words .list-group-item {
+    border: none;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease;
+}
+
+.recent-words .list-group-item:hover {
+    transform: translateX(5px);
+}
+
+.recent-words .word-badge {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-weight: 500;
+}
+
+.progress-ring {
+    width: 80px;
+    height: 80px;
+}
+
+.progress-ring circle {
+    fill: transparent;
+    stroke-width: 8;
+    stroke-linecap: round;
+    transform: rotate(-90deg);
+    transform-origin: 50% 50%;
+}
+
+.progress-ring .background {
+    stroke: #e9ecef;
+}
+
+.progress-ring .progress {
+    stroke: #007bff;
+    stroke-dasharray: 226;
+    stroke-dashoffset: 226;
+    animation: progress-animation 2s ease-out;
+}
+
+@keyframes progress-animation {
+    0% { stroke-dashoffset: 226; }
+    100% { stroke-dashoffset: var(--progress-offset); }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- AI 快速查詢區域 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="quick-search-container">
+                <div class="row align-items-center" style="min-height: 120px;">
+                    <div class="col-md-4">
+                        <h3 class="text-primary mb-2">
+                            <i class="bi bi-magic"></i> AI 快速查詢
+                        </h3>
+                        <p class="text-muted mb-0">輸入英文單字，AI 立即生成完整資訊</p>
+                    </div>
+                    <div class="col-md-8">
+                        <div class="quick-input-container position-relative">
+                            <div class="input-group input-group-lg mb-2">
+                                <input type="text" class="form-control" id="quickSearchWord" placeholder="輸入英文單字..." autocomplete="off">
+                                <button class="btn btn-primary" type="button" id="quickAiBtn" disabled>
+                                    <i class="bi bi-robot"></i> AI 查詢
+                                </button>
+                                <a href="{{ url_for('add_words_batch_ai') }}" class="btn btn-outline-primary" title="AI 批次新增多個單字">
+                                    <i class="bi bi-magic"></i> 批次新增
+                                </a>
+                            </div>
+                            <!-- 快速搜尋自動完成候選清單 -->
+                            <div class="quick-autocomplete-dropdown" id="quickAutocompleteDropdown" style="display: none;">
+                                <div class="quick-autocomplete-list" id="quickAutocompleteList">
+                                    <!-- 候選項目會動態插入這裡 -->
+                                </div>
+                            </div>
+                        </div>
+                        <!-- 固定高度的狀態區域 -->
+                        <div id="quickSearchStatus" style="height: 40px; overflow: hidden;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 統計卡片 -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card stat-card">
+                <div class="card-body text-center">
+                    <div class="stat-icon primary mx-auto">
+                        <i class="bi bi-collection"></i>
+                    </div>
+                    <h3 class="mb-1">{{ total_words }}</h3>
+                    <p class="text-muted mb-0">總單字數</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card stat-card">
+                <div class="card-body text-center">
+                    <div class="stat-icon success mx-auto">
+                        <i class="bi bi-calendar-day"></i>
+                    </div>
+                    <h3 class="mb-1">{{ time_stats.get('recent_3_days', 0) }}</h3>
+                    <p class="text-muted mb-0">近三天新增</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card stat-card">
+                <div class="card-body text-center">
+                    <div class="stat-icon info mx-auto">
+                        <i class="bi bi-calendar-week"></i>
+                    </div>
+                    <h3 class="mb-1">{{ time_stats.get('recent_week', 0) }}</h3>
+                    <p class="text-muted mb-0">本週新增</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card stat-card">
+                <div class="card-body text-center">
+                    <div class="stat-icon warning mx-auto">
+                        <i class="bi bi-calendar-month"></i>
+                    </div>
+                    <h3 class="mb-1">{{ time_stats.get('recent_month', 0) }}</h3>
+                    <p class="text-muted mb-0">本月新增</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- 最近新增的單字 -->
+        <div class="col-12 mb-4">
+            <div class="card action-card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-clock-history"></i> 最近新增
+                    </h5>
+                    {% if total_words > 3 %}
+                    <a href="{{ url_for('vocabulary_list') }}" class="btn btn-outline-primary btn-sm">
+                        查看全部
+                    </a>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    {% if recent_words %}
+                        <div class="recent-words">
+                            <div class="list-group list-group-flush">
+                                {% for word in recent_words %}
+                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex align-items-center mb-1">
+                                            <span class="word-badge me-3">{{ word.word }}</span>
+                                            {% if word.phonetic %}
+                                                <small class="text-muted">{{ word.phonetic }}</small>
+                                            {% endif %}
+                                        </div>
+                                        <div class="text-muted mb-1">{{ word.chinese_meaning }}</div>
+                                        <small class="text-muted">
+                                            {{ word.created_date.strftime('%m/%d %H:%M') }}
+                                        </small>
+                                    </div>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{{ url_for('word_detail', word_id=word.id) }}"
+                                           class="btn btn-outline-info" title="查看">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        <button class="btn btn-outline-primary pronunciation-btn"
+                                                data-word="{{ word.word }}" title="發音">
+                                            <i class="bi bi-volume-up"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-book display-4 text-muted"></i>
+                            <h6 class="mt-3 text-muted">還沒有任何單字</h6>
+                            <p class="text-muted mb-3">開始建立你的專屬單字庫吧！</p>
+                            <a href="{{ url_for('add_word') }}" class="btn btn-primary">
+                                <i class="bi bi-plus-circle"></i> 新增第一個單字
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 學習提示 -->
+    {% if total_words > 0 %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card action-card">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h6 class="mb-2">
+                                <i class="bi bi-lightbulb text-warning"></i>
+                                學習小提示
+                            </h6>
+                            <p class="mb-0 text-muted">
+                                {% if time_stats.get('recent_3_days', 0) == 0 %}
+                                    最近三天沒有新增單字，保持學習節奏很重要哦！
+                                {% elif time_stats.get('recent_3_days', 0) >= 5 %}
+                                    哇！最近三天新增了 {{ time_stats.get('recent_3_days') }} 個單字，學習很積極呢！
+                                {% else %}
+                                    保持良好的學習節奏，建議每天至少學習 2-3 個新單字。
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-md-end">
+                            <a href="{{ url_for('random_review') }}" class="btn btn-outline-primary">
+                                <i class="bi bi-arrow-clockwise"></i> 複習單字
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- 快速 AI 查詢結果 Modal -->
+<div class="modal fade" id="quickAiResultModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-magic"></i> AI 生成結果
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="quickAiResultContent">
+                    <!-- AI 生成的內容會在這裡顯示 -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <a href="{{ url_for('add_word') }}" class="btn btn-outline-primary">
+                    <i class="bi bi-pencil"></i> 手動編輯
+                </a>
+                <button type="button" class="btn btn-success" id="saveQuickResult" onclick="saveQuickAiResult()">
+                    <i class="bi bi-check-circle"></i> 新增並儲存
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript 功能 -->
+<script>
+// 快速 AI 查詢功能與自動完成
+document.addEventListener('DOMContentLoaded', function() {
+    const quickSearchWord = document.getElementById('quickSearchWord');
+    const quickAiBtn = document.getElementById('quickAiBtn');
+    const quickSearchStatus = document.getElementById('quickSearchStatus');
+    const quickAutocompleteDropdown = document.getElementById('quickAutocompleteDropdown');
+    const quickAutocompleteList = document.getElementById('quickAutocompleteList');
+    const quickInputContainer = document.querySelector('.quick-input-container');
+
+    let quickAutocompleteTimeout;
+    let quickSelectedIndex = -1;
+    let quickCurrentSuggestions = [];
+
+    // 監聽輸入框
+    quickSearchWord.addEventListener('input', function() {
+        const query = this.value.trim();
+
+        if (query) {
+            quickAiBtn.disabled = false;
+
+            // 清除之前的延遲
+            clearTimeout(quickAutocompleteTimeout);
+
+            // 自動完成功能
+            if (query.length >= 2) {
+                quickAutocompleteTimeout = setTimeout(() => {
+                    fetchQuickAutocompleteSuggestions(query);
+                }, 300);
+            }
+        } else {
+            quickAiBtn.disabled = true;
+            hideQuickAutocomplete();
+        }
+    });
+
+    // 輸入框焦點效果
+    quickSearchWord.addEventListener('focus', function() {
+        document.querySelector('.quick-search-container').style.borderColor = 'var(--theme-primary)';
+        document.querySelector('.quick-search-container').style.boxShadow = '0 4px 12px rgba(var(--theme-primary-rgb), 0.15)';
+    });
+
+    quickSearchWord.addEventListener('blur', function() {
+        document.querySelector('.quick-search-container').style.borderColor = 'var(--theme-border)';
+        document.querySelector('.quick-search-container').style.boxShadow = 'none';
+    });
+
+    // 監聽鍵盤事件（包括方向鍵導航）
+    quickSearchWord.addEventListener('keydown', function(e) {
+        if (isQuickAutocompleteVisible()) {
+            switch(e.key) {
+                case 'ArrowDown':
+                    e.preventDefault();
+                    quickSelectedIndex = Math.min(quickSelectedIndex + 1, quickCurrentSuggestions.length - 1);
+                    updateQuickAutocompleteSelection();
+                    break;
+                case 'ArrowUp':
+                    e.preventDefault();
+                    quickSelectedIndex = Math.max(quickSelectedIndex - 1, -1);
+                    updateQuickAutocompleteSelection();
+                    break;
+                case 'Enter':
+                    e.preventDefault();
+                    if (quickSelectedIndex >= 0) {
+                        selectQuickSuggestion(quickCurrentSuggestions[quickSelectedIndex]);
+                    } else {
+                        hideQuickAutocomplete();
+                        performQuickSearch();
+                    }
+                    break;
+                case 'Escape':
+                    e.preventDefault();
+                    hideQuickAutocomplete();
+                    break;
+            }
+        } else if (e.key === 'Enter' && this.value.trim()) {
+            performQuickSearch();
+        }
+    });
+
+    // 點擊其他地方隱藏自動完成
+    document.addEventListener('click', function(e) {
+        if (!quickInputContainer.contains(e.target)) {
+            hideQuickAutocomplete();
+        }
+    });
+
+    // 監聽按鈕點擊
+    quickAiBtn.addEventListener('click', performQuickSearch);
+
+    // 快速搜尋自動完成相關函數
+    function fetchQuickAutocompleteSuggestions(query) {
+        console.log('Fetching quick autocomplete for:', query);
+        fetch(`/api/word-suggestions?q=${encodeURIComponent(query)}&limit=8`)
+            .then(response => response.json())
+            .then(data => {
+                console.log('Quick autocomplete response:', data);
+                quickCurrentSuggestions = data.suggestions || [];
+                displayQuickAutocompleteSuggestions(quickCurrentSuggestions);
+            })
+            .catch(error => {
+                console.error('快速搜尋自動完成錯誤:', error);
+                hideQuickAutocomplete();
+            });
+    }
+
+    function displayQuickAutocompleteSuggestions(suggestions) {
+        if (suggestions.length === 0) {
+            hideQuickAutocomplete();
+            return;
+        }
+
+        quickSelectedIndex = -1;
+        let html = '';
+
+        suggestions.forEach((suggestion, index) => {
+            html += `
+                <div class="quick-autocomplete-item" data-index="${index}">
+                    <div class="word-text">${suggestion.word}</div>
+                </div>
+            `;
+        });
+
+        quickAutocompleteList.innerHTML = html;
+        showQuickAutocomplete();
+
+        // 添加點擊事件
+        quickAutocompleteList.removeEventListener('click', handleQuickAutocompleteClick);
+        quickAutocompleteList.addEventListener('click', handleQuickAutocompleteClick);
+    }
+
+    function handleQuickAutocompleteClick(e) {
+        e.preventDefault();
+        const item = e.target.closest('.quick-autocomplete-item');
+        if (item) {
+            const index = parseInt(item.dataset.index);
+            selectQuickSuggestion(quickCurrentSuggestions[index]);
+        }
+    }
+
+    function selectQuickSuggestion(suggestion) {
+        quickSearchWord.value = suggestion.word;
+        hideQuickAutocomplete();
+        performQuickSearch();
+    }
+
+    function updateQuickAutocompleteSelection() {
+        const items = quickAutocompleteList.querySelectorAll('.quick-autocomplete-item');
+        items.forEach((item, index) => {
+            item.classList.toggle('active', index === quickSelectedIndex);
+        });
+    }
+
+    function showQuickAutocomplete() {
+        quickAutocompleteDropdown.style.display = 'block';
+        quickInputContainer.classList.add('has-suggestions');
+    }
+
+    function hideQuickAutocomplete() {
+        quickAutocompleteDropdown.style.display = 'none';
+        quickInputContainer.classList.remove('has-suggestions');
+        quickSelectedIndex = -1;
+    }
+
+    function isQuickAutocompleteVisible() {
+        return quickAutocompleteDropdown.style.display === 'block';
+    }
+
+    function performQuickSearch() {
+        const word = quickSearchWord.value.trim();
+
+        if (!word) {
+            showQuickStatus('請輸入英文單字', 'warning');
+            return;
+        }
+
+        // 清除之前的狀態
+        clearQuickStatus();
+
+        // 顯示載入狀態
+        quickAiBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> 查詢中...';
+        quickAiBtn.disabled = true;
+        showQuickStatus('AI 正在生成單字資訊...', 'info');
+
+        // 呼叫 AI API
+        fetch('/api/generate-word-info', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                word: word,
+                provider: null
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 顯示 AI 生成結果
+                showQuickAiResult(data.data);
+                showQuickStatus('AI 生成完成！', 'success');
+            } else {
+                // 顯示錯誤訊息
+                showQuickStatus(data.message, 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('AI 生成錯誤:', error);
+            showQuickStatus('網路連線錯誤，請檢查網路連線後重試', 'danger');
+        })
+        .finally(() => {
+            // 恢復按鈕
+            quickAiBtn.innerHTML = '<i class="bi bi-robot"></i> AI 查詢';
+            quickAiBtn.disabled = false;
+        });
+    }
+
+    function showQuickStatus(message, type) {
+        const alertClass = type === 'success' ? 'alert-success' :
+                          type === 'danger' ? 'alert-danger' :
+                          type === 'warning' ? 'alert-warning' : 'alert-info';
+
+        const iconClass = type === 'success' ? 'bi-check-circle' :
+                         type === 'danger' ? 'bi-exclamation-triangle' :
+                         type === 'warning' ? 'bi-exclamation-triangle' : 'bi-info-circle';
+
+        quickSearchStatus.innerHTML = `
+            <div class="alert ${alertClass} fade show" role="alert">
+                <i class="bi ${iconClass}"></i>
+                <small>${message}</small>
+            </div>
+        `;
+
+        // 3秒後自動隱藏成功和資訊訊息
+        if (type === 'success' || type === 'info') {
+            setTimeout(() => {
+                quickSearchStatus.innerHTML = '';
+            }, 3000);
+        }
+    }
+
+    function clearQuickStatus() {
+        quickSearchStatus.innerHTML = '';
+    }
+
+    function showQuickAiResult(result) {
+        // 儲存結果到全域變數供 Modal 使用
+        window.currentQuickAiResult = result;
+
+        // 顯示 Modal
+        const modal = new bootstrap.Modal(document.getElementById('quickAiResultModal'));
+        modal.show();
+
+        // 填入 Modal 內容
+        document.getElementById('quickAiResultContent').innerHTML = `
+            <div class="alert alert-info mb-3">
+                <i class="bi bi-info-circle"></i>
+                <strong>AI 提供商:</strong> ${result.provider.toUpperCase()}
+                <span class="badge bg-primary ms-2">信心度: ${Math.round(result.confidence_score * 100)}%</span>
+            </div>
+            <div class="row">
+                <div class="col-12 mb-3">
+                    <label class="form-label"><strong>英文單字:</strong></label>
+                    <div class="form-control-plaintext border rounded p-2 bg-light">${result.word}</div>
+                </div>
+                <div class="col-12 mb-3">
+                    <label class="form-label"><strong>中文翻譯:</strong></label>
+                    <div class="form-control-plaintext border rounded p-2 bg-light">${result.chinese_meaning || '未提供'}</div>
+                </div>
+                <div class="col-12 mb-3">
+                    <label class="form-label"><strong>英文定義:</strong></label>
+                    <div class="form-control-plaintext border rounded p-2 bg-light">${result.english_meaning || '未提供'}</div>
+                </div>
+                <div class="col-6 mb-3">
+                    <label class="form-label"><strong>音標:</strong></label>
+                    <div class="form-control-plaintext border rounded p-2 bg-light">${result.phonetic || '未提供'}</div>
+                </div>
+                <div class="col-6 mb-3">
+                    <label class="form-label"><strong>例句:</strong></label>
+                    <div class="form-control-plaintext border rounded p-2 bg-light">${result.example_sentence || '未提供'}</div>
+                </div>
+                <div class="col-6 mb-3">
+                    <label class="form-label"><strong>同義詞:</strong></label>
+                    <div class="form-control-plaintext border rounded p-2 bg-light">${result.synonyms || '未提供'}</div>
+                </div>
+                <div class="col-6 mb-3">
+                    <label class="form-label"><strong>反義詞:</strong></label>
+                    <div class="form-control-plaintext border rounded p-2 bg-light">${result.antonyms || '未提供'}</div>
+                </div>
+            </div>
+        `;
+    }
+
+    // 發音功能
+    document.querySelectorAll('.pronunciation-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const word = this.getAttribute('data-word');
+            const icon = this.querySelector('i');
+            const originalClass = icon.className;
+
+            // 顯示載入狀態
+            icon.className = 'bi bi-hourglass-split';
+            this.disabled = true;
+
+            // 創建語音合成
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(word);
+                utterance.lang = 'en-US';
+                utterance.rate = 0.8;
+
+                utterance.onend = () => {
+                    icon.className = originalClass;
+                    this.disabled = false;
+                };
+
+                utterance.onerror = () => {
+                    icon.className = originalClass;
+                    this.disabled = false;
+                    alert('發音功能暫時無法使用');
+                };
+
+                speechSynthesis.speak(utterance);
+            } else {
+                icon.className = originalClass;
+                this.disabled = false;
+                alert('您的瀏覽器不支援語音合成功能');
+            }
+        });
+    });
+
+    // 進度環動畫
+    const progressCircle = document.querySelector('.progress-ring .progress');
+    if (progressCircle) {
+        const totalWords = {{ total_words }};
+        const maxWords = 100;
+        const progress = Math.min(totalWords / maxWords, 1);
+        const circumference = 2 * Math.PI * 36; // r = 36
+        const offset = circumference - (progress * circumference);
+
+        progressCircle.style.setProperty('--progress-offset', offset);
+    }
+});
+
+// 快速儲存功能
+function saveQuickAiResult() {
+    if (!window.currentQuickAiResult) {
+        alert('沒有可儲存的資料');
+        return;
+    }
+
+    const result = window.currentQuickAiResult;
+    const saveBtn = document.getElementById('saveQuickResult');
+
+    // 顯示載入狀態
+    saveBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> 儲存中...';
+    saveBtn.disabled = true;
+
+    // 準備表單資料
+    const formData = new FormData();
+    formData.append('word', result.word);
+    formData.append('chinese_meaning', result.chinese_meaning || '');
+    formData.append('english_meaning', result.english_meaning || '');
+    formData.append('phonetic', result.phonetic || '');
+    formData.append('example_sentence', result.example_sentence || '');
+    formData.append('synonyms', result.synonyms || '');
+    formData.append('antonyms', result.antonyms || '');
+
+    // 提交到新增單字 API
+    fetch('/add', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if (response.ok) {
+            // 關閉 Modal
+            bootstrap.Modal.getInstance(document.getElementById('quickAiResultModal')).hide();
+
+            // 顯示成功訊息並重新載入頁面
+            alert('單字儲存成功！');
+            window.location.reload();
+        } else {
+            throw new Error('儲存失敗');
+        }
+    })
+    .catch(error => {
+        console.error('儲存錯誤:', error);
+        alert('儲存失敗，請重試');
+    })
+    .finally(() => {
+        // 恢復按鈕
+        saveBtn.innerHTML = '<i class="bi bi-check-circle"></i> 新增並儲存';
+        saveBtn.disabled = false;
+    });
+}
+</script>
+{% endblock %}

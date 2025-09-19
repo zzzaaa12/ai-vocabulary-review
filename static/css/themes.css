@@ -32,6 +32,10 @@
   --theme-primary-rgb: 13, 110, 253;
   --theme-primary-dark: #0b5ed7;
   --theme-primary-light: #6ea8fe;
+  --theme-success: #198754;
+  --theme-info: #0dcaf0;
+  --theme-warning: #ffc107;
+  --theme-danger: #dc3545;
   --theme-gradient: linear-gradient(135deg, #0d6efd 0%, #6ea8fe 100%);
   --theme-gradient-light: linear-gradient(135deg, #f0f7ff 0%, #ffffff 100%);
   --theme-shadow: rgba(13, 110, 253, 0.1);
@@ -46,6 +50,10 @@
   --theme-primary-rgb: 25, 135, 84;
   --theme-primary-dark: #146c43;
   --theme-primary-light: #75b798;
+  --theme-success: #28a745;
+  --theme-info: #17a2b8;
+  --theme-warning: #ffc107;
+  --theme-danger: #dc3545;
   --theme-gradient: linear-gradient(135deg, #198754 0%, #75b798 100%);
   --theme-gradient-light: linear-gradient(135deg, #f0fff4 0%, #ffffff 100%);
   --theme-shadow: rgba(25, 135, 84, 0.1);
@@ -60,12 +68,41 @@
   --theme-primary-rgb: 108, 117, 125;
   --theme-primary-dark: #5c636a;
   --theme-primary-light: #adb5bd;
+  --theme-success: #198754;
+  --theme-info: #0dcaf0;
+  --theme-warning: #ffc107;
+  --theme-danger: #dc3545;
   --theme-gradient: linear-gradient(135deg, #6c757d 0%, #adb5bd 100%);
   --theme-gradient-light: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
   --theme-shadow: rgba(108, 117, 125, 0.1);
   --theme-shadow-hover: rgba(108, 117, 125, 0.2);
   --theme-border: rgba(108, 117, 125, 0.2);
   --theme-border-light: rgba(108, 117, 125, 0.1);
+}
+
+/* 暖灰棕主題 */
+[data-theme="warm-brown"] {
+  --theme-primary: #8d6e63;
+  --theme-primary-rgb: 141, 110, 99;
+  --theme-primary-dark: #6d4c41;
+  --theme-primary-light: #bcaaa4;
+  --theme-secondary: #5d4037;
+  --theme-success: #a1887f;
+  --theme-info: #00acc1;
+  --theme-warning: #ff9800;
+  --theme-danger: #d32f2f;
+
+  /* 漸變色 */
+  --theme-gradient: linear-gradient(135deg, #8d6e63 0%, #bcaaa4 100%);
+  --theme-gradient-light: linear-gradient(135deg, #faf8f6 0%, #ffffff 100%);
+
+  /* 陰影色 */
+  --theme-shadow: rgba(141, 110, 99, 0.12);
+  --theme-shadow-hover: rgba(141, 110, 99, 0.18);
+
+  /* 邊框色 */
+  --theme-border: rgba(141, 110, 99, 0.25);
+  --theme-border-light: rgba(141, 110, 99, 0.15);
 }
 
 /* 主題應用 */
@@ -178,6 +215,59 @@
   border-color: var(--theme-primary);
 }
 
+/* 快速操作按鈕統一設計 - 淺色版本 */
+.quick-action-btn.btn-primary {
+  background-color: var(--theme-primary-light) !important;
+  border-color: var(--theme-primary-light) !important;
+  color: var(--theme-primary-dark) !important;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.quick-action-btn.btn-primary:hover {
+  background-color: var(--theme-primary) !important;
+  border-color: var(--theme-primary) !important;
+  color: white !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px var(--theme-shadow-hover);
+}
+
+.quick-action-btn.btn-primary:disabled {
+  background-color: var(--theme-primary-light) !important;
+  border-color: var(--theme-primary-light) !important;
+  color: var(--theme-primary-dark) !important;
+  opacity: 0.5;
+  transform: none !important;
+  box-shadow: none !important;
+  cursor: not-allowed;
+}
+
+.quick-action-btn.btn-primary:disabled:hover {
+  background-color: var(--theme-primary-light) !important;
+  border-color: var(--theme-primary-light) !important;
+  color: var(--theme-primary-dark) !important;
+  opacity: 0.5;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* 統計卡片圖示主題化 */
+.stat-icon.primary {
+  background: linear-gradient(135deg, var(--theme-primary), var(--theme-primary-dark));
+}
+
+.stat-icon.success {
+  background: linear-gradient(135deg, var(--theme-success), var(--theme-primary));
+}
+
+.stat-icon.info {
+  background: linear-gradient(135deg, var(--theme-info), var(--theme-primary-light));
+}
+
+.stat-icon.warning {
+  background: linear-gradient(135deg, var(--theme-warning), #e0a800);
+}
+
 /* 主題切換器樣式 */
 .theme-selector {
   min-width: 120px;
@@ -207,6 +297,7 @@
 .theme-color-preview.blue { background-color: #0d6efd; }
 .theme-color-preview.green { background-color: #198754; }
 .theme-color-preview.gray { background-color: #6c757d; }
+.theme-color-preview.warm-brown { background-color: #8d6e63; }
 
 /* 主題切換動畫 */
 * {

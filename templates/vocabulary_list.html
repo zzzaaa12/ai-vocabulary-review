@@ -1,0 +1,738 @@
+{% extends "base.html" %}
+
+{% block title %}單字本 - English Vocabulary Notebook{% endblock %}
+
+{% block extra_css %}
+<style>
+.quick-search-container {
+    border: 2px dashed var(--theme-border);
+    border-radius: 12px;
+    padding: 20px;
+    background: var(--theme-gradient-light);
+    transition: all 0.3s ease;
+}
+
+.quick-search-container .input-group-lg .form-control {
+    border-radius: 8px 0 0 8px;
+    border: 2px solid var(--theme-border);
+    transition: border-color 0.3s ease;
+}
+
+.quick-search-container .btn-primary {
+    border-radius: 0 8px 8px 0;
+}
+
+/* 自動完成下拉選單樣式 */
+.autocomplete-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 9999;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 0 0 8px 8px;
+    border-top: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.autocomplete-list {
+    padding: 0;
+    margin: 0;
+}
+
+.autocomplete-item {
+    padding: 10px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #f8f9fa;
+    transition: background-color 0.2s ease;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.autocomplete-item:hover {
+    background-color: #f8f9fa;
+}
+
+.autocomplete-item:last-child {
+    border-bottom: none;
+}
+
+.autocomplete-item.active {
+    background-color: var(--bs-primary);
+    color: white;
+}
+
+.autocomplete-item .word-main {
+    font-weight: 600;
+    color: var(--bs-dark);
+}
+
+.autocomplete-item.active .word-main {
+    color: white;
+}
+
+.autocomplete-item .word-meaning {
+    font-size: 0.9em;
+    color: var(--bs-secondary);
+    margin-left: 8px;
+}
+
+.autocomplete-item.active .word-meaning {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* 單字列表容器過渡效果 */
+#wordListContainer {
+    transition: opacity 0.3s ease;
+}
+
+#wordListContainer.loading {
+    opacity: 0.6;
+}
+
+/* 發音按鈕動畫 */
+.pronunciation-btn {
+    transition: all 0.2s ease;
+}
+
+.pronunciation-btn:hover {
+    transform: scale(1.1);
+}
+
+.pronunciation-btn.playing {
+    background-color: var(--bs-success);
+    border-color: var(--bs-success);
+    color: white;
+}
+
+/* 載入動畫 */
+.spinner-border-sm {
+    width: 1rem;
+    height: 1rem;
+}
+
+/* 回應式調整 */
+@media (max-width: 768px) {
+    .quick-search-container {
+        padding: 15px;
+    }
+
+    .pronunciation-btn {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    .list-group-item .d-flex {
+        flex-direction: column;
+        align-items: flex-start !important;
+    }
+
+    .list-group-item .btn-group {
+        margin-top: 10px;
+        width: 100%;
+    }
+
+    .list-group-item .btn-group .btn {
+        flex: 1;
+    }
+}
+
+/* 搜尋狀態指示器 */
+.search-status {
+    padding: 10px 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.search-status.success {
+    background-color: #d1edff;
+    border: 1px solid #0084ff;
+    color: #0056b3;
+}
+
+.search-status.warning {
+    background-color: #fff3cd;
+    border: 1px solid #ffc107;
+    color: #856404;
+}
+
+.search-status.error {
+    background-color: #f8d7da;
+    border: 1px solid #dc3545;
+    color: #721c24;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- 頁面標題 -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">
+                    <i class="bi bi-book"></i> 我的單字本
+                </h1>
+                <div class="d-flex gap-2">
+                    <a href="{{ url_for('add_word') }}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle"></i> 新增單字
+                    </a>
+                    <div class="dropdown">
+                        <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-three-dots"></i> 更多
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{{ url_for('add_words_batch') }}">
+                                <i class="bi bi-upload"></i> 批次新增
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('add_words_batch_ai') }}">
+                                <i class="bi bi-magic"></i> AI 批次新增
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('random_review') }}" {% if total_words == 0 %}onclick="return false;" class="disabled"{% endif %}>
+                                <i class="bi bi-arrow-clockwise"></i> 開始複習
+                            </a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 搜尋和篩選區域 -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <!-- 搜尋欄 -->
+                            <div class="row align-items-center mb-3">
+                                <div class="col-md-8">
+                                    <div class="position-relative">
+                                        <div class="input-group">
+                                            <input type="text"
+                                                   class="form-control"
+                                                   id="searchInput"
+                                                   placeholder="搜尋單字、中文意思或例句..."
+                                                   autocomplete="off">
+                                            <button class="btn btn-outline-secondary" type="button" id="searchBtn">
+                                                <i class="bi bi-search"></i>
+                                            </button>
+                                            <button class="btn btn-outline-secondary" type="button" id="clearSearchBtn" style="display: none;">
+                                                <i class="bi bi-x"></i>
+                                            </button>
+                                        </div>
+                                        <!-- 自動完成候選清單 -->
+                                        <div class="autocomplete-dropdown" id="autocompleteDropdown" style="display: none;">
+                                            <div class="autocomplete-list" id="autocompleteList">
+                                                <!-- 候選項目會動態插入這裡 -->
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 text-md-end">
+                                    <!-- 時間篩選 -->
+                                    <div class="dropdown">
+                                        <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                            <i class="bi bi-funnel"></i>
+                                            {{ current_filter_label }}
+                                            <span class="badge bg-primary ms-1">{{ filtered_count }}</span>
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            {% for filter_key, filter_label in time_filters.items() %}
+                                            <li>
+                                                <a class="dropdown-item {% if time_filter == filter_key %}active{% endif %}"
+                                                   href="{{ url_for('vocabulary_list', time_filter=filter_key) }}">
+                                                    <i class="bi {% if filter_key == 'all' %}bi-collection{% elif filter_key == 'recent_3_days' %}bi-clock{% elif filter_key == 'recent_week' %}bi-calendar-week{% elif filter_key == 'recent_2_weeks' %}bi-calendar2-week{% elif filter_key == 'recent_month' %}bi-calendar-month{% elif filter_key == 'recent_3_months' %}bi-calendar3{% endif %}"></i>
+                                                    {{ filter_label }}
+                                                    <span class="badge bg-light text-dark ms-2">{{ time_stats.get(filter_key, 0) }}</span>
+                                                </a>
+                                            </li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 搜尋狀態指示器 -->
+                            <div id="searchStatus" style="display: none;" class="search-status">
+                                <span id="searchStatusText"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 載入指示器 -->
+            <div id="loadingIndicator" style="display: none;" class="text-center py-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">載入中...</span>
+                </div>
+                <div class="mt-2 text-muted">正在載入單字...</div>
+            </div>
+
+            <!-- 單字列表容器 -->
+            <div id="wordListContainer">
+                {% if words %}
+                    <!-- 單字列表 -->
+                    <div class="list-group" id="wordList">
+                    {% for word in words %}
+                        <div class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <h5 class="mb-0 me-3"><strong>{{ word.word }}</strong></h5>
+                                        {% if word.phonetic %}
+                                            <span class="badge bg-light text-dark me-2">{{ word.phonetic }}</span>
+                                        {% endif %}
+                                        <button class="btn btn-outline-primary btn-sm pronunciation-btn"
+                                                data-word="{{ word.word }}"
+                                                title="播放發音">
+                                            <i class="bi bi-volume-up"></i>
+                                        </button>
+                                    </div>
+                                    <p class="mb-1"><strong>中文翻譯:</strong> {{ word.chinese_meaning }}</p>
+                                    {% if word.english_meaning %}
+                                        <p class="mb-1"><strong>英文釋義:</strong> {{ word.english_meaning }}</p>
+                                    {% endif %}
+                                    {% if word.example_sentence %}
+                                        <p class="mb-1"><strong>例句:</strong> <em>{{ word.example_sentence }}</em></p>
+                                    {% endif %}
+                                    {% if word.synonyms %}
+                                        <p class="mb-1">
+                                            <strong>同義詞:</strong>
+                                            {% for synonym in word.synonyms %}
+                                                <span class="badge bg-success me-1">{{ synonym }}</span>
+                                            {% endfor %}
+                                        </p>
+                                    {% endif %}
+                                    {% if word.antonyms %}
+                                        <p class="mb-1">
+                                            <strong>反義詞:</strong>
+                                            {% for antonym in word.antonyms %}
+                                                <span class="badge bg-danger me-1">{{ antonym }}</span>
+                                            {% endfor %}
+                                        </p>
+                                    {% endif %}
+                                    <small class="text-muted">
+                                        新增時間: {{ word.created_date.strftime('%Y-%m-%d %H:%M') }}
+                                        {% if word.updated_date != word.created_date %}
+                                            | 更新時間: {{ word.updated_date.strftime('%Y-%m-%d %H:%M') }}
+                                        {% endif %}
+                                    </small>
+                                </div>
+                                <div class="btn-group-vertical" role="group">
+                                    <a href="{{ url_for('word_detail', word_id=word.id) }}" class="btn btn-outline-info btn-sm" title="查看詳情">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="{{ url_for('edit_word', word_id=word.id) }}" class="btn btn-outline-warning btn-sm" title="編輯">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <form method="post" action="{{ url_for('delete_word', word_id=word.id) }}" style="display: inline;"
+                                          onsubmit="return confirm('確定要刪除單字「{{ word.word }}」嗎？')">
+                                        <button type="submit" class="btn btn-outline-danger btn-sm" title="刪除">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                    </div>
+
+                    <!-- 分頁或載入更多按鈕區域（預留） -->
+                    {% if filtered_count > 50 %}
+                    <div class="text-center mt-4">
+                        <p class="text-muted">
+                            顯示了 {{ words|length }} 個單字，共 {{ filtered_count }} 個
+                        </p>
+                    </div>
+                    {% endif %}
+
+                {% else %}
+                    <!-- 空狀態 -->
+                    <div class="text-center py-5">
+                        <i class="bi bi-book display-1 text-muted"></i>
+                        <h4 class="mt-3 text-muted">
+                            {% if time_filter != 'all' %}
+                                這個時間範圍內沒有單字
+                            {% else %}
+                                還沒有任何單字
+                            {% endif %}
+                        </h4>
+                        <p class="text-muted mb-4">
+                            {% if time_filter != 'all' %}
+                                試試其他時間範圍，或新增一些新單字吧！
+                            {% else %}
+                                開始新增你的第一個單字吧！
+                            {% endif %}
+                        </p>
+                        <a href="{{ url_for('add_word') }}" class="btn btn-primary me-2">
+                            <i class="bi bi-plus-circle"></i> 新增單字
+                        </a>
+                        {% if time_filter != 'all' %}
+                        <a href="{{ url_for('vocabulary_list') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-collection"></i> 查看全部
+                        </a>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 發音功能的 JavaScript -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 發音功能
+    document.querySelectorAll('.pronunciation-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const word = this.getAttribute('data-word');
+            const icon = this.querySelector('i');
+            const originalClass = icon.className;
+
+            // 顯示載入狀態
+            icon.className = 'bi bi-hourglass-split';
+            this.classList.add('playing');
+            this.disabled = true;
+
+            // 創建語音合成
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(word);
+                utterance.lang = 'en-US';
+                utterance.rate = 0.8;
+
+                utterance.onend = () => {
+                    icon.className = originalClass;
+                    this.classList.remove('playing');
+                    this.disabled = false;
+                };
+
+                utterance.onerror = () => {
+                    icon.className = originalClass;
+                    this.classList.remove('playing');
+                    this.disabled = false;
+                    alert('發音功能暫時無法使用');
+                };
+
+                speechSynthesis.speak(utterance);
+            } else {
+                icon.className = originalClass;
+                this.classList.remove('playing');
+                this.disabled = false;
+                alert('您的瀏覽器不支援語音合成功能');
+            }
+        });
+    });
+
+    // 搜尋功能
+    const searchInput = document.getElementById('searchInput');
+    const searchBtn = document.getElementById('searchBtn');
+    const clearSearchBtn = document.getElementById('clearSearchBtn');
+    const autocompleteDropdown = document.getElementById('autocompleteDropdown');
+    const autocompleteList = document.getElementById('autocompleteList');
+    const searchStatus = document.getElementById('searchStatus');
+    const searchStatusText = document.getElementById('searchStatusText');
+    const wordListContainer = document.getElementById('wordListContainer');
+
+    let searchTimeout;
+    let autocompleteTimeout;
+    let currentAutocompleteRequest;
+
+    // 搜尋按鈕點擊
+    searchBtn.addEventListener('click', performSearch);
+
+    // 清除搜尋按鈕點擊
+    clearSearchBtn.addEventListener('click', clearSearch);
+
+    // Enter 鍵搜尋
+    searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            performSearch();
+        }
+    });
+
+    // 自動完成功能
+    searchInput.addEventListener('input', function() {
+        const query = this.value.trim();
+
+        // 清除之前的計時器
+        clearTimeout(autocompleteTimeout);
+
+        if (query.length >= 2) {
+            // 延遲請求以減少伺服器負載
+            autocompleteTimeout = setTimeout(() => {
+                fetchAutocomplete(query);
+            }, 300);
+        } else {
+            hideAutocomplete();
+        }
+
+        // 顯示或隱藏清除按鈕
+        if (query.length > 0) {
+            clearSearchBtn.style.display = 'block';
+        } else {
+            clearSearchBtn.style.display = 'none';
+        }
+    });
+
+    // 點擊外部隱藏自動完成
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.position-relative')) {
+            hideAutocomplete();
+        }
+    });
+
+    function performSearch() {
+        const query = searchInput.value.trim();
+
+        if (!query) {
+            clearSearch();
+            return;
+        }
+
+        // 顯示載入狀態
+        showLoadingIndicator();
+        hideAutocomplete();
+
+        // 執行搜尋請求
+        fetch(`{{ url_for('search') }}?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                hideLoadingIndicator();
+                displaySearchResults(data);
+                showSearchStatus(data.message, data.words.length > 0 ? 'success' : 'warning');
+            })
+            .catch(error => {
+                hideLoadingIndicator();
+                console.error('搜尋錯誤:', error);
+                showSearchStatus('搜尋時發生錯誤，請稍後再試', 'error');
+            });
+    }
+
+    function clearSearch() {
+        searchInput.value = '';
+        clearSearchBtn.style.display = 'none';
+        hideAutocomplete();
+        hideSearchStatus();
+
+        // 重新載入原始列表
+        location.reload();
+    }
+
+    function displaySearchResults(data) {
+        const wordList = document.getElementById('wordList');
+
+        if (data.words.length === 0) {
+            wordListContainer.innerHTML = `
+                <div class="text-center py-5">
+                    <i class="bi bi-search display-1 text-muted"></i>
+                    <h4 class="mt-3 text-muted">沒有找到相關單字</h4>
+                    <p class="text-muted mb-4">試試其他關鍵字，或新增這個單字到你的單字本！</p>
+                    <button onclick="clearSearch()" class="btn btn-outline-secondary me-2">
+                        <i class="bi bi-arrow-left"></i> 返回列表
+                    </button>
+                    <a href="{{ url_for('add_word') }}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle"></i> 新增單字
+                    </a>
+                </div>
+            `;
+            return;
+        }
+
+        // 重新建構單字列表
+        let wordListHTML = '<div class="list-group" id="wordList">';
+
+        data.words.forEach(word => {
+            wordListHTML += generateWordListItem(word);
+        });
+
+        wordListHTML += '</div>';
+        wordListContainer.innerHTML = wordListHTML;
+
+        // 重新綁定發音按鈕事件
+        bindPronunciationEvents();
+    }
+
+    function generateWordListItem(word) {
+        let synonymsHTML = '';
+        if (word.synonyms && word.synonyms.length > 0) {
+            synonymsHTML = '<p class="mb-1"><strong>同義詞:</strong>';
+            word.synonyms.forEach(synonym => {
+                synonymsHTML += `<span class="badge bg-success me-1">${synonym}</span>`;
+            });
+            synonymsHTML += '</p>';
+        }
+
+        let antonymsHTML = '';
+        if (word.antonyms && word.antonyms.length > 0) {
+            antonymsHTML = '<p class="mb-1"><strong>反義詞:</strong>';
+            word.antonyms.forEach(antonym => {
+                antonymsHTML += `<span class="badge bg-danger me-1">${antonym}</span>`;
+            });
+            antonymsHTML += '</p>';
+        }
+
+        return `
+            <div class="list-group-item">
+                <div class="d-flex w-100 justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-center mb-2">
+                            <h5 class="mb-0 me-3"><strong>${word.word}</strong></h5>
+                            ${word.phonetic ? `<span class="badge bg-light text-dark me-2">${word.phonetic}</span>` : ''}
+                            <button class="btn btn-outline-primary btn-sm pronunciation-btn"
+                                    data-word="${word.word}"
+                                    title="播放發音">
+                                <i class="bi bi-volume-up"></i>
+                            </button>
+                        </div>
+                        <p class="mb-1"><strong>中文翻譯:</strong> ${word.chinese_meaning}</p>
+                        ${word.english_meaning ? `<p class="mb-1"><strong>英文釋義:</strong> ${word.english_meaning}</p>` : ''}
+                        ${word.example_sentence ? `<p class="mb-1"><strong>例句:</strong> <em>${word.example_sentence}</em></p>` : ''}
+                        ${synonymsHTML}
+                        ${antonymsHTML}
+                        <small class="text-muted">
+                            新增時間: ${word.created_date}
+                        </small>
+                    </div>
+                    <div class="btn-group-vertical" role="group">
+                        <a href="/word/${word.id}" class="btn btn-outline-info btn-sm" title="查看詳情">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                        <a href="/edit/${word.id}" class="btn btn-outline-warning btn-sm" title="編輯">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <form method="post" action="/delete/${word.id}" style="display: inline;"
+                              onsubmit="return confirm('確定要刪除單字「${word.word}」嗎？')">
+                            <button type="submit" class="btn btn-outline-danger btn-sm" title="刪除">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function fetchAutocomplete(query) {
+        // 取消之前的請求
+        if (currentAutocompleteRequest) {
+            currentAutocompleteRequest.abort();
+        }
+
+        currentAutocompleteRequest = new AbortController();
+
+        fetch(`{{ url_for('autocomplete') }}?q=${encodeURIComponent(query)}`, {
+            signal: currentAutocompleteRequest.signal
+        })
+            .then(response => response.json())
+            .then(data => {
+                showAutocomplete(data.suggestions);
+            })
+            .catch(error => {
+                if (error.name !== 'AbortError') {
+                    console.error('自動完成錯誤:', error);
+                }
+            });
+    }
+
+    function showAutocomplete(suggestions) {
+        if (suggestions.length === 0) {
+            hideAutocomplete();
+            return;
+        }
+
+        autocompleteList.innerHTML = '';
+
+        suggestions.forEach(suggestion => {
+            const item = document.createElement('div');
+            item.className = 'autocomplete-item';
+            item.innerHTML = `
+                <span class="word-main">${suggestion.word}</span>
+                <span class="word-meaning">${suggestion.chinese_meaning}</span>
+            `;
+
+            item.addEventListener('click', function() {
+                searchInput.value = suggestion.word;
+                hideAutocomplete();
+                performSearch();
+            });
+
+            autocompleteList.appendChild(item);
+        });
+
+        autocompleteDropdown.style.display = 'block';
+    }
+
+    function hideAutocomplete() {
+        autocompleteDropdown.style.display = 'none';
+    }
+
+    function showSearchStatus(message, type) {
+        searchStatusText.textContent = message;
+        searchStatus.className = `search-status ${type}`;
+        searchStatus.style.display = 'block';
+    }
+
+    function hideSearchStatus() {
+        searchStatus.style.display = 'none';
+    }
+
+    function showLoadingIndicator() {
+        document.getElementById('loadingIndicator').style.display = 'block';
+        wordListContainer.classList.add('loading');
+    }
+
+    function hideLoadingIndicator() {
+        document.getElementById('loadingIndicator').style.display = 'none';
+        wordListContainer.classList.remove('loading');
+    }
+
+    function bindPronunciationEvents() {
+        document.querySelectorAll('.pronunciation-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const word = this.getAttribute('data-word');
+                const icon = this.querySelector('i');
+                const originalClass = icon.className;
+
+                icon.className = 'bi bi-hourglass-split';
+                this.classList.add('playing');
+                this.disabled = true;
+
+                if ('speechSynthesis' in window) {
+                    const utterance = new SpeechSynthesisUtterance(word);
+                    utterance.lang = 'en-US';
+                    utterance.rate = 0.8;
+
+                    utterance.onend = () => {
+                        icon.className = originalClass;
+                        this.classList.remove('playing');
+                        this.disabled = false;
+                    };
+
+                    utterance.onerror = () => {
+                        icon.className = originalClass;
+                        this.classList.remove('playing');
+                        this.disabled = false;
+                        alert('發音功能暫時無法使用');
+                    };
+
+                    speechSynthesis.speak(utterance);
+                } else {
+                    icon.className = originalClass;
+                    this.classList.remove('playing');
+                    this.disabled = false;
+                    alert('您的瀏覽器不支援語音合成功能');
+                }
+            });
+        });
+    }
+
+    // 將 clearSearch 函數設為全域，供 HTML 中的按鈕使用
+    window.clearSearch = clearSearch;
+});
+</script>
+{% endblock %}

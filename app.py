@@ -71,7 +71,32 @@ def register_routes(app):
     @require_auth
     def index():
         """
-        Main page displaying vocabulary list with optional time filtering.
+        Main page with dashboard overview.
+        """
+        try:
+            # Get basic statistics for dashboard
+            total_words = app.vocabulary_service.get_total_word_count()
+            time_stats = app.vocabulary_service.get_time_filter_stats()
+
+            # Get recent words for quick preview (latest 3)
+            recent_words = app.vocabulary_service.get_words_by_time_filter('all')[:3]
+
+            return render_template('dashboard.html',
+                                 total_words=total_words,
+                                 time_stats=time_stats,
+                                 recent_words=recent_words)
+        except Exception as e:
+            flash(f'載入儀表板時發生錯誤：{str(e)}', 'error')
+            return render_template('dashboard.html',
+                                 total_words=0,
+                                 time_stats={},
+                                 recent_words=[])
+
+    @app.route('/vocabulary')
+    @require_auth
+    def vocabulary_list():
+        """
+        Vocabulary list page with filtering and search functionality.
         """
         time_filter = request.args.get('time_filter', 'all')
 
