@@ -2,7 +2,32 @@
 
 /* CSS 變數定義 */
 :root {
-  /* 橘色主題 (預設) */
+  /* 暖灰棕主題 (預設) */
+  --theme-primary: #8d6e63;
+  --theme-primary-rgb: 141, 110, 99;
+  --theme-primary-dark: #6d4c41;
+  --theme-primary-light: #bcaaa4;
+  --theme-secondary: #5d4037;
+  --theme-success: #a1887f;
+  --theme-info: #00acc1;
+  --theme-warning: #ff9800;
+  --theme-danger: #d32f2f;
+
+  /* 漸變色 */
+  --theme-gradient: linear-gradient(135deg, #8d6e63 0%, #bcaaa4 100%);
+  --theme-gradient-light: linear-gradient(135deg, #faf8f6 0%, #ffffff 100%);
+
+  /* 陰影色 */
+  --theme-shadow: rgba(141, 110, 99, 0.12);
+  --theme-shadow-hover: rgba(141, 110, 99, 0.18);
+
+  /* 邊框色 */
+  --theme-border: rgba(141, 110, 99, 0.25);
+  --theme-border-light: rgba(141, 110, 99, 0.15);
+}
+
+/* 橘色主題 */
+[data-theme="orange"] {
   --theme-primary: #fd7e14;
   --theme-primary-rgb: 253, 126, 20;
   --theme-primary-dark: #e8590c;
@@ -12,16 +37,10 @@
   --theme-info: #0dcaf0;
   --theme-warning: #ffc107;
   --theme-danger: #dc3545;
-
-  /* 漸變色 */
   --theme-gradient: linear-gradient(135deg, #fd7e14 0%, #ffa94d 100%);
   --theme-gradient-light: linear-gradient(135deg, #fff5f0 0%, #ffffff 100%);
-
-  /* 陰影色 */
   --theme-shadow: rgba(253, 126, 20, 0.1);
   --theme-shadow-hover: rgba(253, 126, 20, 0.2);
-
-  /* 邊框色 */
   --theme-border: rgba(253, 126, 20, 0.2);
   --theme-border-light: rgba(253, 126, 20, 0.1);
 }
